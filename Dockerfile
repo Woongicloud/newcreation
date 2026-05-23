@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 # server는 ../shared 를 상대경로로 import함
 # /app/shared + /app/server 구조로 배치
