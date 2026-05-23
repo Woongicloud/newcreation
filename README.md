@@ -112,25 +112,32 @@ npm run dev:client   # 클라이언트만
 
 ### Client → Vercel
 
+> 루트 디렉터리 전체를 Vercel에 연결해야 합니다. (`client/` 하위 폴더가 아닌 **repo root**)  
+> `vercel.json`이 루트에 있으므로 자동으로 client만 빌드합니다.
+
 1. GitHub에 push
-2. [Vercel](https://vercel.com) → New Project → `client/` 디렉터리 선택
-3. Build Command: `npm run build`
-4. Output Directory: `dist`
+2. [Vercel](https://vercel.com) → New Project → GitHub repo 선택
+3. **Root Directory**: 비워두기 (repo root 사용)
+4. **Framework Preset**: Other (vercel.json이 자동 처리)
 5. Environment Variables 추가:
-   - `VITE_SERVER_URL` = Railway 서버 URL
+   - `VITE_SERVER_URL` = Railway 서버 URL (예: `https://xxx.railway.app`)
    - `VITE_ADMIN_PASSWORD` = 관리자 비밀번호
+6. Deploy
 
 ### Server → Railway
 
-1. [Railway](https://railway.app) → New Project → GitHub 연결
-2. Root Directory: (루트 전체, Dockerfile 자동 감지)
-3. Environment Variables 추가:
+> `Dockerfile`이 repo root에 있으므로 Railway가 자동 감지합니다.
+
+1. [Railway](https://railway.app) → New Project → GitHub repo 연결
+2. **Root Directory**: 비워두기 (repo root 사용)
+3. Railway가 루트의 `Dockerfile` 자동 감지 → Docker 빌드
+4. Environment Variables 추가:
    - `PORT` = `3001`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_KEY`
    - `ADMIN_PASSWORD`
    - `CLIENT_URL` = Vercel 배포 URL (예: `https://your-app.vercel.app`)
-4. Deploy → 생성된 URL을 client의 `VITE_SERVER_URL`에 설정
+5. Deploy → 생성된 URL을 Vercel의 `VITE_SERVER_URL`에 설정 후 Vercel 재배포
 
 > **주의**: `CLIENT_URL`은 서버의 CORS 허용 오리진. Vercel URL과 반드시 일치해야 함.
 
