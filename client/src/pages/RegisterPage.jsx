@@ -1,14 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import socket from '../lib/socket.js';
 import useGameStore from '../store/gameStore.js';
-import { CLASS_OPTIONS } from '@shared/constants.js';
+import { CLASS_OPTIONS, SOCKET_EVENTS } from '@shared/constants.js';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { setPlayer, setRoomCode } = useGameStore();
+
+  // 저장된 세션이 있으면 자동 재접속
+  useEffect(() => {
+    const savedId = localStorage.getItem('playerId');
+    const savedRoom = localStorage.getItem('roomCode');
+    if (!savedId || !savedRoom) return;
+
+    if (!socket.connected) socket.connect();
+
+    const doRejoin = () => {
+      socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId: savedId, roomCode: savedRoom });
+    };
+    const onSync = ({ status, currentQuestion }) => {
+      setPlayer({
+        id: savedId,
+        name: localStorage.getItem('playerName') || '',
+        className: localStorage.getItem('playerClass') || '',
+        score: 0,
+      });
+      setRoomCode(savedRoom);
+      if (status === 'playing' || currentQuestion) navigate('/game');
+      else navigate('/lobby');
+    };
+    const onFail = () => {
+      localStorage.removeItem('playerId');
+      localStorage.removeItem('roomCode');
+    };
+
+    if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
+    socket.once(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
+    socket.once('error', onFail);
+
+    return () => {
+      socket.off('connect', doRejoin);
+      socket.off(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
+      socket.off('error', onFail);
+    };
+  }, []);
 
   const [roomCode, setRoomCodeInput] = useState(searchParams.get('roomCode') || '');
   const [name, setName] = useState('');
@@ -53,6 +91,8 @@ export default function RegisterPage() {
       setRoomCode(roomCode.trim().toUpperCase());
       localStorage.setItem('playerId', player.id);
       localStorage.setItem('roomCode', roomCode.trim().toUpperCase());
+      localStorage.setItem('playerName', player.name);
+      localStorage.setItem('playerClass', player.className);
       setLoading(false);
       navigate('/lobby');
     });

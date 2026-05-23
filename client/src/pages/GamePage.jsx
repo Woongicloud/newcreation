@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import socket from '../lib/socket.js';
@@ -21,23 +21,55 @@ export default function GamePage() {
     player,
     currentQuestion, timeRemaining, hasSubmitted, lastResult,
     leaderboard,
+    setPlayer, setRoomCode, setPlayers,
     setCurrentQuestion, setTimeRemaining, setHasSubmitted, setLastResult,
     setLeaderboard, updatePlayerScore,
   } = useGameStore();
 
   const questionStartTime = useRef(null);
-  const [correctAnswer, setCorrectAnswer] = useState(null); // state로 관리해야 리렌더 발생
+  const [correctAnswer, setCorrectAnswer] = useState(null);
   const [phase, setPhase] = useState('game'); // game | roundEnd
+  const [reconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
-    if (!player) { navigate('/'); return; }
+    if (!player) {
+      const savedId = localStorage.getItem('playerId');
+      const savedRoom = localStorage.getItem('roomCode');
+      if (!savedId || !savedRoom) { navigate('/'); return; }
+
+      setReconnecting(true);
+      if (!socket.connected) socket.connect();
+
+      const doRejoin = () => socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId: savedId, roomCode: savedRoom });
+      if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
+
+      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp }) => {
+        const myPlayer = sp?.find(p => p.id === savedId)
+          || { id: savedId, name: localStorage.getItem('playerName') || '', className: localStorage.getItem('playerClass') || '', score: 0 };
+        setPlayer(myPlayer);
+        setRoomCode(savedRoom);
+        if (sp) setPlayers(sp);
+        setReconnecting(false);
+        if (q) { setCurrentQuestion({ ...q }); setTimeRemaining(tr || 0); setPhase('game'); }
+      };
+      const onFail = () => { localStorage.removeItem('playerId'); localStorage.removeItem('roomCode'); navigate('/'); };
+
+      socket.once(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
+      socket.once('error', onFail);
+
+      return () => {
+        socket.off('connect', doRejoin);
+        socket.off(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
+        socket.off('error', onFail);
+      };
+    }
+
     if (!socket.connected) socket.connect();
 
     if (currentQuestion && !questionStartTime.current) {
       questionStartTime.current = Date.now();
     }
 
-    // 소켓 재연결 시 세션 복원
     const onReconnect = () => {
       const playerId = localStorage.getItem('playerId');
       const storedRoomCode = localStorage.getItem('roomCode');
@@ -114,6 +146,17 @@ export default function GamePage() {
     if (hasSubmitted || !currentQuestion) return;
     socket.emit(SOCKET_EVENTS.PLAYER_REACTION, { reactionTimeMs });
     setHasSubmitted();
+  }
+
+  if (reconnecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-spin">🔄</div>
+          <p className="text-white text-lg font-semibold">재연결 중...</p>
+        </div>
+      </div>
+    );
   }
 
   const score = player?.score ?? 0;

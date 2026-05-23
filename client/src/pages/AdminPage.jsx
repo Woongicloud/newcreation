@@ -30,6 +30,9 @@ export default function AdminPage() {
     if (pwInput === ADMIN_PASSWORD) {
       setAuthed(true);
       if (!socket.connected) socket.connect();
+      // 저장된 방코드 복원
+      const saved = sessionStorage.getItem('adminRoomCode');
+      if (saved) setRoomCode(saved);
     } else {
       setPwError('비밀번호가 틀렸습니다.');
     }
@@ -67,6 +70,7 @@ export default function AdminPage() {
 
     socket.on('admin:room_created', ({ roomCode: rc }) => {
       setRoomCode(rc);
+      sessionStorage.setItem('adminRoomCode', rc);
       setGameStatus('waiting');
       addLog(`방 생성: ${rc}`);
     });

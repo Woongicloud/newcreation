@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import socket from '../lib/socket.js';
@@ -8,10 +8,46 @@ import ChatInput from '../components/chat/ChatInput.jsx';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
-  const { player, roomCode, players, setPlayers, setCurrentQuestion, setTimeRemaining } = useGameStore();
+  const { player, roomCode, players, setPlayer, setRoomCode, setPlayers, setCurrentQuestion, setTimeRemaining } = useGameStore();
+  const [reconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
-    if (!player) { navigate('/'); return; }
+    if (!player) {
+      const savedId = localStorage.getItem('playerId');
+      const savedRoom = localStorage.getItem('roomCode');
+      if (!savedId || !savedRoom) { navigate('/'); return; }
+
+      setReconnecting(true);
+      if (!socket.connected) socket.connect();
+
+      const doRejoin = () => socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId: savedId, roomCode: savedRoom });
+      if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
+
+      const onSync = ({ status, currentQuestion, players: sp, timeRemaining: tr }) => {
+        const myPlayer = sp?.find(p => p.id === savedId)
+          || { id: savedId, name: localStorage.getItem('playerName') || '', className: localStorage.getItem('playerClass') || '', score: 0 };
+        setPlayer(myPlayer);
+        setRoomCode(savedRoom);
+        if (sp) setPlayers(sp);
+        setReconnecting(false);
+        if ((status === 'playing' || currentQuestion) && currentQuestion) {
+          setCurrentQuestion(currentQuestion);
+          setTimeRemaining(tr || 0);
+          navigate('/game');
+        }
+      };
+      const onFail = () => { localStorage.removeItem('playerId'); localStorage.removeItem('roomCode'); navigate('/'); };
+
+      socket.once(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
+      socket.once('error', onFail);
+
+      return () => {
+        socket.off('connect', doRejoin);
+        socket.off(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
+        socket.off('error', onFail);
+      };
+    }
+
     if (!socket.connected) socket.connect();
 
     const onReconnect = () => {
@@ -21,10 +57,8 @@ export default function LobbyPage() {
         socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId, roomCode: storedRoomCode });
       }
     };
-
-    const onPlayerJoined = ({ players }) => setPlayers(players);
+    const onPlayerJoined = ({ players: p }) => setPlayers(p);
     const onQuestionStart = ({ question, timeLimit }) => {
-      // store에 먼저 저장해야 GamePage 마운트 시 바로 사용 가능
       setCurrentQuestion({ ...question, timeLimit });
       setTimeRemaining(timeLimit);
       navigate('/game');
@@ -39,7 +73,18 @@ export default function LobbyPage() {
       socket.off(SOCKET_EVENTS.GAME_PLAYER_JOINED, onPlayerJoined);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
     };
-  }, [player]);
+  }, [player?.id]);
+
+  if (reconnecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-purple-950 to-gray-950">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-spin">🔄</div>
+          <p className="text-white text-lg font-semibold">재연결 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-purple-950 to-gray-950">

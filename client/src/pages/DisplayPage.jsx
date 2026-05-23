@@ -54,17 +54,34 @@ export default function DisplayPage() {
   const [joined, setJoined] = useState(false);
   const [joinError, setJoinError] = useState('');
 
+  function doJoin(code) {
+    if (!socket.connected) socket.connect();
+    const attempt = () => {
+      socket.emit('display:join', { roomCode: code });
+      socket.once(SOCKET_EVENTS.GAME_PLAYER_JOINED, () => {
+        setJoinedRoomCode(code);
+        sessionStorage.setItem('displayRoomCode', code);
+        setJoined(true);
+      });
+      socket.once(SOCKET_EVENTS.ERROR, ({ message }) => {
+        sessionStorage.removeItem('displayRoomCode');
+        setJoinError(message);
+      });
+    };
+    if (socket.connected) attempt(); else socket.once('connect', attempt);
+  }
+
+  // 저장된 방코드로 자동 재접속
+  useEffect(() => {
+    const saved = sessionStorage.getItem('displayRoomCode');
+    if (saved) doJoin(saved);
+  }, []);
+
   function handleJoin(e) {
     e.preventDefault();
     const code = roomCodeInput.trim().toUpperCase();
     if (!code) return;
-    if (!socket.connected) socket.connect();
-    socket.emit('display:join', { roomCode: code });
-    socket.once(SOCKET_EVENTS.ERROR, ({ message }) => setJoinError(message));
-    socket.once(SOCKET_EVENTS.GAME_PLAYER_JOINED, () => {
-      setJoinedRoomCode(code);
-      setJoined(true);
-    });
+    doJoin(code);
   }
 
   useEffect(() => {
