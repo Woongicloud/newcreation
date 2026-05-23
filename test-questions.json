@@ -1,0 +1,36 @@
+{
+  "sessionName": "테스트 게임",
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "theme": "객관식 테스트",
+      "gameMode": "multiple_choice",
+      "questions": [
+        {
+          "content": "대한민국의 수도는?",
+          "choices": ["서울", "부산", "대전", "광주"],
+          "correctAnswer": "서울",
+          "timeLimit": 15
+        },
+        {
+          "content": "전도사님의 아들 이름은?",
+          "choices": ["도준", "도배", "도훈", "도현"],
+          "correctAnswer": "도현",
+          "timeLimit": 15
+        }
+      ]
+    },
+    {
+      "roundNumber": 2,
+      "theme": "반응속도 게임",
+      "gameMode": "reaction",
+      "questions": [
+        {
+          "content": "신호가 뜨면 바로 누르세요!",
+          "correctAnswer": "__reaction__",
+          "timeLimit": 5
+        }
+      ]
+    }
+  ]
+}

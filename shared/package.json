@@ -1,0 +1,6 @@
+{
+  "name": "@newcreation/shared",
+  "version": "1.0.0",
+  "main": "constants.js",
+  "type": "module"
+}
