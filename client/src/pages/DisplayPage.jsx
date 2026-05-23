@@ -208,7 +208,7 @@ export default function DisplayPage() {
             <div className="flex flex-col items-center gap-[1.5vw]">
               <div className="bg-white p-[1.5vw] rounded-2xl">
                 <QRCodeSVG
-                  value={`${window.location.origin}/?roomCode=${joinedRoomCode}`}
+                  value={`${(import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, '')}/?roomCode=${joinedRoomCode}`}
                   size={Math.round(window.innerWidth * 0.2)}
                   bgColor="#ffffff"
                   fgColor="#000000"

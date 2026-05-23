@@ -23,14 +23,19 @@ import { handleChat } from './chatHandler.js';
 const app = express();
 const httpServer = createServer(app);
 
+const allowedOrigins = [
+  (process.env.CLIENT_URL || '').replace(/\/$/, ''),
+  'http://localhost:5173',
+].filter(Boolean);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
