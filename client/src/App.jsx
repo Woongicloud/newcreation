@@ -4,6 +4,7 @@ import LobbyPage from './pages/LobbyPage.jsx';
 import GamePage from './pages/GamePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import DisplayPage from './pages/DisplayPage.jsx';
+import GuidePage from './pages/GuidePage.jsx';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/game" element={<GamePage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/display" element={<DisplayPage />} />
+        <Route path="/guide" element={<GuidePage />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,0 +1,23 @@
+{
+  "rounds": [
+    {
+      "roundNumber": 2,
+      "theme": "연습 — 단답형",
+      "gameMode": "short_answer",
+      "questions": [
+        {
+          "content": "지금 몇 월인가요? (숫자만 입력)",
+          "correctAnswer": "5",
+          "timeLimit": 15,
+          "maxScore": 500
+        },
+        {
+          "content": "빨간색을 영어로 쓰세요",
+          "correctAnswer": "red",
+          "timeLimit": 20,
+          "maxScore": 500
+        }
+      ]
+    }
+  ]
+}

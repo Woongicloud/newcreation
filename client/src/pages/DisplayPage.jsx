@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import socket from '../lib/socket.js';
@@ -53,6 +53,7 @@ export default function DisplayPage() {
   const [joinedRoomCode, setJoinedRoomCode] = useState('');
   const [joined, setJoined] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const audioRef = useRef(null);
 
   function doJoin(code) {
     if (!socket.connected) socket.connect();
@@ -97,6 +98,16 @@ export default function DisplayPage() {
       setCorrectAnswer(null);
       setSubmittedCount(0);
       setPhase(q.gameMode === GAME_MODES.REACTION ? 'reaction_wait' : 'question');
+      // 오디오 퀴즈: Display에서 자동 재생
+      if (q.audioUrl) {
+        if (audioRef.current) {
+          audioRef.current.src = q.audioUrl;
+          audioRef.current.play().catch(() => {});
+        }
+      } else if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
     });
 
     socket.on(SOCKET_EVENTS.GAME_TIMER_TICK, ({ remaining }) => {
@@ -183,6 +194,9 @@ export default function DisplayPage() {
 
   return (
     <div className="relative w-screen h-screen bg-gray-950 overflow-hidden select-none">
+      {/* 오디오 퀴즈용 숨김 플레이어 */}
+      <audio ref={audioRef} className="hidden" />
+
       {/* 흐르는 채팅 오버레이 */}
       <ChatOverlay />
 

@@ -11,6 +11,13 @@ function generateRoomCode() {
   ).join('');
 }
 
+// 상대 경로 파일명을 /media/ 절대 경로로 변환
+function resolveMediaUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('/') || url.startsWith('http')) return url;
+  return `/media/${url}`;
+}
+
 // 메모리 세션 저장소
 const sessions = {};
 
@@ -42,11 +49,12 @@ async function createSession(io) {
     rounds: [],
     currentRound: 0,
     currentQuestionIndex: 0,
-    players: new Map(),       // socketId → { id, name, className, score }
+    players: new Map(),       // socketId → { id, name, className, score, chatCount, totalResponseTimeMs, submitCount }
     timer: null,
     questionStartTime: null,
     submittedAnswers: new Set(),
     reactionResults: [],
+    awards: null,
   };
 
   return { roomCode, sessionId: data.id };
@@ -65,7 +73,16 @@ async function registerPlayer(roomCode, socketId, { name, className }) {
 
   if (error) throw error;
 
-  const playerData = { id: data.id, name, className, score: 0, socketId };
+  const playerData = {
+    id: data.id,
+    name,
+    className,
+    score: 0,
+    socketId,
+    chatCount: 0,
+    totalResponseTimeMs: 0,
+    submitCount: 0,
+  };
   session.players.set(socketId, playerData);
 
   await supabase.from('players').update({ socket_id: socketId }).eq('id', data.id);
@@ -102,13 +119,17 @@ async function loadQuestions(roomCode, roundsData) {
     const questions = [];
     for (let i = 0; i < round.questions.length; i++) {
       const q = round.questions[i];
+      const resolvedImageUrl = resolveMediaUrl(q.imageUrl);
+      const resolvedAudioUrl = resolveMediaUrl(q.audioUrl);
+
       const { data: qRow, error: qErr } = await supabase
         .from('questions')
         .insert({
           round_id: roundRow.id,
           question_number: i + 1,
           content: q.content,
-          image_url: q.imageUrl || null,
+          image_url: resolvedImageUrl,
+          audio_url: resolvedAudioUrl,
           consonant_hint: q.consonantHint || null,
           correct_answer: q.correctAnswer,
           choices: q.choices || null,
@@ -123,6 +144,8 @@ async function loadQuestions(roomCode, roundsData) {
       questions.push({
         ...q,
         id: qRow.id,
+        imageUrl: resolvedImageUrl,
+        audioUrl: resolvedAudioUrl,
         questionNumber: i + 1,
         maxScore: qRow.max_score,
         penalty: qRow.penalty,
@@ -170,6 +193,7 @@ function broadcastQuestion(roomCode, io) {
     id: question.id,
     content: question.content,
     imageUrl: question.imageUrl,
+    audioUrl: question.audioUrl,
     consonantHint: question.consonantHint,
     choices: question.choices,
     timeLimit: question.timeLimit,
@@ -232,6 +256,8 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
   );
 
   player.score += scoreDelta;
+  player.totalResponseTimeMs += responseTimeMs;
+  player.submitCount += 1;
 
   await supabase.from('answers').insert({
     question_id: questionId,
@@ -271,6 +297,9 @@ async function submitReaction(roomCode, socketId, { reactionTimeMs }, io) {
   session.submittedAnswers.add(socketId);
   const player = session.players.get(socketId);
   if (!player) return;
+
+  player.totalResponseTimeMs += reactionTimeMs;
+  player.submitCount += 1;
 
   session.reactionResults.push({ socketId, playerId: player.id, name: player.name, reactionTimeMs });
 
@@ -366,6 +395,81 @@ function nextRound(roomCode, io) {
   }
 }
 
+function computeAwardsFromSession(session) {
+  const allPlayers = Array.from(session.players.values());
+  if (allPlayers.length === 0) return null;
+
+  const byScore = [...allPlayers].sort((a, b) => b.score - a.score);
+
+  const first = byScore[0];
+  const midIndex = Math.floor(byScore.length / 2);
+  const middle = byScore[midIndex];
+  const thirtyFirst = byScore[30] || null;
+
+  // 마음만 빨라상: 최소 평균 응답시간 (제출한 적 있는 플레이어만)
+  const withSubmits = allPlayers.filter((p) => p.submitCount > 0);
+  let fastestResponder = null;
+  if (withSubmits.length > 0) {
+    fastestResponder = withSubmits.reduce((fastest, p) => {
+      const avg = p.totalResponseTimeMs / p.submitCount;
+      const fastestAvg = fastest.totalResponseTimeMs / fastest.submitCount;
+      return avg < fastestAvg ? p : fastest;
+    });
+  }
+
+  // 말이 왜케 많아상: 최대 채팅 수
+  const chattiest = allPlayers.reduce((top, p) =>
+    (p.chatCount || 0) > (top.chatCount || 0) ? p : top
+  , allPlayers[0]);
+
+  // 슬롯머신용 전체 플레이어 풀
+  const randomPool = byScore.map((p, i) => ({
+    rank: i + 1,
+    name: p.name,
+    className: p.className,
+    score: p.score,
+    chatCount: p.chatCount || 0,
+    avgResponseMs: p.submitCount > 0 ? Math.round(p.totalResponseTimeMs / p.submitCount) : null,
+  }));
+
+  // 반별 평균 점수 (인원 수 차이 보정)
+  const classMap = {};
+  allPlayers.forEach((p) => {
+    if (!classMap[p.className]) classMap[p.className] = { total: 0, count: 0 };
+    classMap[p.className].total += p.score;
+    classMap[p.className].count += 1;
+  });
+  const classLeaderboard = Object.entries(classMap)
+    .map(([className, { total, count }]) => ({
+      className,
+      avg: Math.round(total / count),
+      count,
+    }))
+    .sort((a, b) => b.avg - a.avg);
+
+  return {
+    first:    { name: first.name, className: first.className, score: first.score },
+    middle:   { name: middle.name, className: middle.className, score: middle.score },
+    thirtyFirst: thirtyFirst
+      ? { name: thirtyFirst.name, className: thirtyFirst.className, score: thirtyFirst.score }
+      : null,
+    fastestResponder: fastestResponder
+      ? {
+          name: fastestResponder.name,
+          className: fastestResponder.className,
+          avgResponseMs: Math.round(fastestResponder.totalResponseTimeMs / fastestResponder.submitCount),
+        }
+      : null,
+    chattiest: {
+      name: chattiest.name,
+      className: chattiest.className,
+      chatCount: chattiest.chatCount || 0,
+    },
+    randomPool,
+    classLeaderboard,
+  };
+}
+
 function endGame(roomCode, io) {
   const session = sessions[roomCode];
   if (!session) return;
@@ -378,7 +482,17 @@ function endGame(roomCode, io) {
     .sort((a, b) => b.score - a.score)
     .map((p, idx) => ({ rank: idx + 1, name: p.name, className: p.className, score: p.score }));
 
+  // 시상 데이터 미리 계산 (세션 삭제 전에)
+  session.awards = computeAwardsFromSession(session);
+
   io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_END, { leaderboard: finalLeaderboard, isFinal: true });
+  io.to(roomCode).emit(SOCKET_EVENTS.GAME_SESSION_ENDED, { finalLeaderboard });
+
+  // 30초 후 메모리에서 세션 제거
+  setTimeout(() => {
+    delete sessions[roomCode];
+    console.log(`[Game] Session ${roomCode} removed from memory`);
+  }, 30_000);
 }
 
 function handleDisconnect(socketId) {
@@ -393,6 +507,8 @@ function handleDisconnect(socketId) {
 function rejoinSession(roomCode, socketId, playerId, io) {
   const session = sessions[roomCode];
   if (!session) return null;
+  // 종료된 세션에는 재접속 불가
+  if (session.status === GAME_STATUS.FINISHED) return null;
 
   for (const [oldSocketId, player] of session.players.entries()) {
     if (player.id === playerId) {
@@ -421,6 +537,23 @@ function rejoinSession(roomCode, socketId, playerId, io) {
   return null;
 }
 
+function incrementChatCount(roomCode, playerId) {
+  const session = sessions[roomCode];
+  if (!session) return;
+  for (const player of session.players.values()) {
+    if (player.id === playerId) {
+      player.chatCount = (player.chatCount || 0) + 1;
+      break;
+    }
+  }
+}
+
+function getAwards(roomCode) {
+  const session = sessions[roomCode];
+  if (!session) return null;
+  return session.awards;
+}
+
 export {
   createSession,
   registerPlayer,
@@ -435,4 +568,6 @@ export {
   endGame,
   handleDisconnect,
   rejoinSession,
+  incrementChatCount,
+  getAwards,
 };

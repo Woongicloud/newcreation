@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import socket from '../lib/socket.js';
 import useGameStore from '../store/gameStore.js';
 import { SOCKET_EVENTS, GAME_MODES } from '@shared/constants.js';
@@ -13,7 +12,10 @@ import ShortAnswer from '../components/game-modes/ShortAnswer.jsx';
 import ConsonantQuiz from '../components/game-modes/ConsonantQuiz.jsx';
 import WordGuess from '../components/game-modes/WordGuess.jsx';
 import ImageQuiz from '../components/game-modes/ImageQuiz.jsx';
+import AudioQuiz from '../components/game-modes/AudioQuiz.jsx';
 import ReactionGame from '../components/game-modes/ReactionGame.jsx';
+
+const LS_KEYS = ['playerId', 'roomCode', 'playerName', 'playerClass'];
 
 export default function GamePage() {
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ export default function GamePage() {
         setReconnecting(false);
         if (q) { setCurrentQuestion({ ...q }); setTimeRemaining(tr || 0); setPhase('game'); }
       };
-      const onFail = () => { localStorage.removeItem('playerId'); localStorage.removeItem('roomCode'); navigate('/'); };
+      const onFail = () => { LS_KEYS.forEach((k) => localStorage.removeItem(k)); navigate('/'); };
 
       socket.once(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
       socket.once('error', onFail);
@@ -104,12 +106,17 @@ export default function GamePage() {
     };
 
     const onQuestionEnd = ({ correctAnswer: ans }) => {
-      setCorrectAnswer(ans); // state 업데이트 → 리렌더 발생
+      setCorrectAnswer(ans);
     };
 
-    const onRoundEnd = ({ leaderboard: lb, isFinal }) => {
+    const onRoundEnd = ({ leaderboard: lb }) => {
       setLeaderboard(lb);
       setPhase('roundEnd');
+    };
+
+    const onSessionEnded = () => {
+      LS_KEYS.forEach((k) => localStorage.removeItem(k));
+      navigate('/');
     };
 
     socket.on('connect', onReconnect);
@@ -119,6 +126,7 @@ export default function GamePage() {
     socket.on(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
     socket.on(SOCKET_EVENTS.GAME_ROUND_END, onRoundEnd);
+    socket.on(SOCKET_EVENTS.GAME_SESSION_ENDED, onSessionEnded);
 
     return () => {
       socket.off('connect', onReconnect);
@@ -128,6 +136,7 @@ export default function GamePage() {
       socket.off(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
       socket.off(SOCKET_EVENTS.GAME_ROUND_END, onRoundEnd);
+      socket.off(SOCKET_EVENTS.GAME_SESSION_ENDED, onSessionEnded);
     };
   }, [player?.id]);
 
@@ -202,28 +211,13 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* 문제 + 게임 영역 */}
+      {/* 게임 영역 — 문제 텍스트는 Display(프로젝터)에서 확인 */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {currentQuestion ? (
           <div className="flex flex-col gap-4 px-4 pt-4 pb-2">
-            {/* 타이머 + 문제 */}
-            <div className="flex items-start gap-3">
+            {/* 타이머 (중앙) */}
+            <div className="flex justify-center">
               <Timer remaining={timeRemaining} total={currentQuestion.timeLimit} />
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-base font-semibold leading-snug">
-                  {currentQuestion.content}
-                </p>
-                {/* 정답 공개 배너 */}
-                {correctAnswer && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm text-yellow-300 font-semibold"
-                  >
-                    정답: {correctAnswer}
-                  </motion.p>
-                )}
-              </div>
             </div>
 
             {/* 게임 모드 컴포넌트 */}
@@ -265,6 +259,15 @@ export default function GamePage() {
               )}
               {gameMode === GAME_MODES.IMAGE_QUIZ && (
                 <ImageQuiz
+                  key={currentQuestion.id}
+                  question={currentQuestion}
+                  onSubmit={handleSubmit}
+                  hasSubmitted={hasSubmitted}
+                  correctAnswer={correctAnswer}
+                />
+              )}
+              {gameMode === GAME_MODES.AUDIO_QUIZ && (
+                <AudioQuiz
                   key={currentQuestion.id}
                   question={currentQuestion}
                   onSubmit={handleSubmit}
