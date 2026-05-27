@@ -1,0 +1,23 @@
+{
+  "rounds": [
+    {
+      "roundNumber": 4,
+      "theme": "연습 — 빈칸 맞추기",
+      "gameMode": "word_guess",
+      "questions": [
+        {
+          "content": "하 _ 로",
+          "correctAnswer": "하나로",
+          "timeLimit": 20,
+          "maxScore": 500
+        },
+        {
+          "content": "사 _ 나 무",
+          "correctAnswer": "소나무",
+          "timeLimit": 20,
+          "maxScore": 500
+        }
+      ]
+    }
+  ]
+}

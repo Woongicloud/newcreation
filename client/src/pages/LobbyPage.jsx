@@ -63,15 +63,21 @@ export default function LobbyPage() {
       setTimeRemaining(timeLimit);
       navigate('/game');
     };
+    const onSessionEnded = () => {
+      ['playerId', 'roomCode', 'playerName', 'playerClass'].forEach((k) => localStorage.removeItem(k));
+      navigate('/');
+    };
 
     socket.on('connect', onReconnect);
     socket.on(SOCKET_EVENTS.GAME_PLAYER_JOINED, onPlayerJoined);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
+    socket.on(SOCKET_EVENTS.GAME_SESSION_ENDED, onSessionEnded);
 
     return () => {
       socket.off('connect', onReconnect);
       socket.off(SOCKET_EVENTS.GAME_PLAYER_JOINED, onPlayerJoined);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
+      socket.off(SOCKET_EVENTS.GAME_SESSION_ENDED, onSessionEnded);
     };
   }, [player?.id]);
 

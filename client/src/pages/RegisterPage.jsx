@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import socket from '../lib/socket.js';
 import useGameStore from '../store/gameStore.js';
@@ -10,8 +10,16 @@ export default function RegisterPage() {
   const [searchParams] = useSearchParams();
   const { setPlayer, setRoomCode } = useGameStore();
 
-  // 저장된 세션이 있으면 자동 재접속
+  // 저장된 세션이 있으면 자동 재접속 (단, URL에 roomCode가 있으면 새 방 우선)
   useEffect(() => {
+    const urlRoom = searchParams.get('roomCode')?.trim().toUpperCase() || null;
+
+    // QR 코드로 새 방에 진입하는 경우 — 기존 세션 무조건 클리어
+    if (urlRoom) {
+      ['playerId', 'roomCode', 'playerName', 'playerClass'].forEach((k) => localStorage.removeItem(k));
+      return;
+    }
+
     const savedId = localStorage.getItem('playerId');
     const savedRoom = localStorage.getItem('roomCode');
     if (!savedId || !savedRoom) return;
@@ -33,8 +41,7 @@ export default function RegisterPage() {
       else navigate('/lobby');
     };
     const onFail = () => {
-      localStorage.removeItem('playerId');
-      localStorage.removeItem('roomCode');
+      ['playerId', 'roomCode', 'playerName', 'playerClass'].forEach((k) => localStorage.removeItem(k));
     };
 
     if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
@@ -46,7 +53,7 @@ export default function RegisterPage() {
       socket.off(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
       socket.off('error', onFail);
     };
-  }, []);
+  }, [searchParams]);
 
   const [roomCode, setRoomCodeInput] = useState(searchParams.get('roomCode') || '');
   const [name, setName] = useState('');
@@ -179,6 +186,10 @@ export default function RegisterPage() {
           >
             {loading ? '접속 중...' : '참가하기 🚀'}
           </button>
+
+          <Link to="/guide" className="block text-center text-purple-400 text-xs mt-3 underline underline-offset-2">
+            게임 방법 보기
+          </Link>
         </form>
       </motion.div>
     </div>
