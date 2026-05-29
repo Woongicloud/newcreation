@@ -13,9 +13,9 @@ export default function ConsonantQuiz({ question, onSubmit, hasSubmitted, correc
     <form onSubmit={handleSubmit} className="w-full px-2 space-y-5">
       {/* 초성 힌트 */}
       {question.consonantHint && (
-        <div className="bg-white/10 rounded-2xl py-6 text-center">
-          <p className="text-gray-400 text-sm mb-2">초성 힌트</p>
-          <p className="text-5xl font-bold text-yellow-300 tracking-[0.3em]">
+        <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl py-6 text-center shadow-sm">
+          <p className="text-slate-500 text-sm mb-2">초성 힌트</p>
+          <p className="text-5xl font-bold text-amber-500 tracking-[0.3em]">
             {question.consonantHint}
           </p>
         </div>
@@ -28,12 +28,12 @@ export default function ConsonantQuiz({ question, onSubmit, hasSubmitted, correc
         disabled={hasSubmitted}
         placeholder="정답을 입력하세요"
         autoComplete="off"
-        className="w-full px-4 py-4 rounded-2xl bg-white/10 border-2 border-white/20 text-white text-xl
-                   placeholder:text-gray-500 focus:outline-none focus:border-yellow-400
+        className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-800 text-xl
+                   placeholder:text-slate-400 focus:outline-none focus:border-yellow-400
                    disabled:opacity-60 touch-target"
       />
       {hasSubmitted && correctAnswer && (
-        <p className="text-center text-yellow-300 text-sm">
+        <p className="text-center text-amber-600 text-sm">
           정답: <span className="font-bold">{correctAnswer}</span>
         </p>
       )}

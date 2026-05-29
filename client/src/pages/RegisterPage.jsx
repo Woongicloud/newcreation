@@ -111,55 +111,55 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-br from-indigo-950 via-purple-950 to-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-pinwheel">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm bg-white/80 backdrop-blur rounded-3xl shadow-xl p-6"
       >
-        <h1 className="text-3xl font-bold text-center text-white mb-2">🎮 레크레이션</h1>
-        <p className="text-center text-purple-300 text-sm mb-8">방 코드를 입력하고 참가하세요!</p>
+        <h1 className="text-3xl font-bold text-center text-slate-800 mb-2">🎮 레크레이션</h1>
+        <p className="text-center text-purple-700 text-sm mb-8">방 코드를 입력하고 참가하세요!</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 방 코드 */}
           <div>
-            <label className="block text-sm text-gray-300 mb-1">방 코드</label>
+            <label className="block text-sm text-slate-600 mb-1">방 코드</label>
             <input
               type="text"
               value={roomCode}
               onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
               placeholder="ABCDEF"
               maxLength={6}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-xl font-mono tracking-[0.4em] text-center placeholder:text-gray-500 focus:outline-none focus:border-purple-400 touch-target"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-800 text-xl font-mono tracking-[0.4em] text-center placeholder:text-slate-400 focus:outline-none focus:border-purple-400 touch-target"
             />
           </div>
 
           {/* 이름 */}
           <div>
-            <label className="block text-sm text-gray-300 mb-1">이름</label>
+            <label className="block text-sm text-slate-600 mb-1">이름</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="홍길동"
               maxLength={10}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-lg placeholder:text-gray-500 focus:outline-none focus:border-purple-400 touch-target"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-800 text-lg placeholder:text-slate-400 focus:outline-none focus:border-purple-400 touch-target"
             />
           </div>
 
           {/* 반 선택 */}
           <div>
-            <label className="block text-sm text-gray-300 mb-1">반</label>
+            <label className="block text-sm text-slate-600 mb-1">반</label>
             <select
               value={className}
               onChange={(e) => handleClassChange(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-lg focus:outline-none focus:border-purple-400 touch-target appearance-none"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-800 text-lg focus:outline-none focus:border-purple-400 touch-target appearance-none"
             >
-              <option value="" className="bg-gray-900">반 선택</option>
+              <option value="" className="bg-white text-slate-800">반 선택</option>
               {CLASS_OPTIONS.map((c) => (
-                <option key={c} value={c} className="bg-gray-900">{c}</option>
+                <option key={c} value={c} className="bg-white text-slate-800">{c}</option>
               ))}
-              <option value="직접입력" className="bg-gray-900">직접 입력...</option>
+              <option value="직접입력" className="bg-white text-slate-800">직접 입력...</option>
             </select>
             {isCustom && (
               <input
@@ -168,14 +168,14 @@ export default function RegisterPage() {
                 onChange={(e) => setCustomClass(e.target.value)}
                 placeholder="반 이름 입력 (예: 청소년부)"
                 maxLength={10}
-                className="mt-2 w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-lg placeholder:text-gray-500 focus:outline-none focus:border-purple-400 touch-target"
+                className="mt-2 w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-800 text-lg placeholder:text-slate-400 focus:outline-none focus:border-purple-400 touch-target"
               />
             )}
           </div>
 
           {/* 에러 메시지 */}
           {error && (
-            <p className="text-red-400 text-sm text-center bg-red-900/30 rounded-lg py-2 px-3">{error}</p>
+            <p className="text-red-600 text-sm text-center bg-red-100 border border-red-200 rounded-lg py-2 px-3">{error}</p>
           )}
 
           {/* 참가 버튼 */}
@@ -187,7 +187,7 @@ export default function RegisterPage() {
             {loading ? '접속 중...' : '참가하기 🚀'}
           </button>
 
-          <Link to="/guide" className="block text-center text-purple-400 text-xs mt-3 underline underline-offset-2">
+          <Link to="/guide" className="block text-center text-purple-700 text-xs mt-3 underline underline-offset-2">
             게임 방법 보기
           </Link>
         </form>

@@ -19,15 +19,15 @@ export default function ChatInput() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 px-3 py-2 bg-black/40 border-t border-white/10">
+    <form onSubmit={handleSubmit} className="flex gap-2 px-3 py-2 bg-white/70 backdrop-blur border-t border-slate-200">
       <input
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="채팅 입력..."
         maxLength={40}
-        className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white text-sm placeholder:text-gray-500
-                   focus:outline-none focus:bg-white/15 min-h-[40px]"
+        className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-sm placeholder:text-slate-400
+                   focus:outline-none focus:border-purple-400 min-h-[40px]"
       />
       <button
         type="submit"

@@ -41,12 +41,12 @@ export default function AudioQuiz({ question, onSubmit, hasSubmitted, correctAns
         disabled={hasSubmitted}
         placeholder="정답을 입력하세요"
         autoComplete="off"
-        className="w-full px-4 py-4 rounded-2xl bg-white/10 border-2 border-white/20 text-white text-xl
-                   placeholder:text-gray-500 focus:outline-none focus:border-indigo-400
+        className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-800 text-xl
+                   placeholder:text-slate-400 focus:outline-none focus:border-indigo-400
                    disabled:opacity-60 touch-target"
       />
       {hasSubmitted && correctAnswer && (
-        <p className="text-center text-yellow-300 text-sm">
+        <p className="text-center text-amber-600 text-sm">
           정답: <span className="font-bold">{correctAnswer}</span>
         </p>
       )}

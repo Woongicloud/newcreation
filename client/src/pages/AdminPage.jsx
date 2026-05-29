@@ -35,6 +35,10 @@ export default function AdminPage() {
   const [slotWinner, setSlotWinner] = useState(null);
   const slotIntervalRef = useRef(null);
 
+  // 모니터링 (활성 방 목록)
+  const [roomsList, setRoomsList] = useState([]);
+  const [nowTs, setNowTs] = useState(Date.now());
+
   function addLog(msg) {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 19)]);
   }
@@ -102,6 +106,11 @@ export default function AdminPage() {
       addLog('시상 데이터 로드 완료');
     });
 
+    socket.on(SOCKET_EVENTS.ADMIN_ROOMS_DATA, (rooms) => {
+      setRoomsList(rooms || []);
+      setNowTs(Date.now());
+    });
+
     socket.on(SOCKET_EVENTS.GAME_SESSION_ENDED, () => {
       setGameStatus('idle');
       setRoomCode('');
@@ -123,6 +132,7 @@ export default function AdminPage() {
       socket.off('admin:room_created');
       socket.off('admin:questions_loaded');
       socket.off(SOCKET_EVENTS.GAME_AWARDS_DATA);
+      socket.off(SOCKET_EVENTS.ADMIN_ROOMS_DATA);
       socket.off(SOCKET_EVENTS.GAME_SESSION_ENDED);
       socket.off(SOCKET_EVENTS.ERROR);
     };
@@ -202,6 +212,33 @@ export default function AdminPage() {
       setSlotWinner(winner);
     }
   }
+
+  // ── 모니터링 ───────────────────────────────────────────────
+  function refreshRooms() {
+    socket.emit(SOCKET_EVENTS.ADMIN_LIST_ROOMS, { password: ADMIN_PASSWORD });
+  }
+
+  function terminateRoom(targetCode) {
+    if (!confirm(`방 ${targetCode} 을(를) 강제 종료하시겠습니까? 남은 참가자는 모두 퇴장됩니다.`)) return;
+    emit(SOCKET_EVENTS.ADMIN_TERMINATE_ROOM, { roomCode: targetCode });
+    addLog(`방 강제 종료 요청: ${targetCode}`);
+  }
+
+  function formatAge(createdAt) {
+    if (!createdAt) return '-';
+    const s = Math.max(0, Math.floor((nowTs - createdAt) / 1000));
+    if (s < 60) return `${s}초`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}분`;
+    return `${Math.floor(m / 60)}시간 ${m % 60}분`;
+  }
+
+  const STATUS_LABEL = { waiting: '대기', playing: '진행중', finished: '종료' };
+  const STATUS_STYLE = {
+    waiting: 'bg-gray-700 text-gray-200',
+    playing: 'bg-green-700 text-green-100',
+    finished: 'bg-red-800 text-red-100',
+  };
 
   // ── 비밀번호 화면 ──────────────────────────────────────────
   if (!authed) {
@@ -294,6 +331,14 @@ export default function AdminPage() {
           }`}
         >
           🏆 시상
+        </button>
+        <button
+          onClick={() => { setActiveTab('monitor'); refreshRooms(); }}
+          className={`px-5 py-2 rounded-lg font-bold text-sm transition-colors ${
+            activeTab === 'monitor' ? 'bg-cyan-600' : 'bg-gray-800 hover:bg-gray-700'
+          }`}
+        >
+          🖥 모니터링
         </button>
       </div>
 
@@ -558,6 +603,57 @@ export default function AdminPage() {
                 )}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── 모니터링 탭 ────────────────────────────────────── */}
+      {activeTab === 'monitor' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-gray-300 text-sm">
+              실행 중인 방 <span className="font-bold text-white">{roomsList.length}</span>개
+              <span className="text-gray-500 ml-2 text-xs">(서버 메모리 기준)</span>
+            </p>
+            <button
+              onClick={refreshRooms}
+              className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 font-bold text-sm transition-colors"
+            >
+              🔄 새로고침
+            </button>
+          </div>
+
+          <p className="text-gray-500 text-xs">
+            진행자 창을 종료 버튼 없이 닫아 남겨진 방을 여기서 강제 종료할 수 있습니다.
+            강제 종료 시 남은 참가자는 모두 퇴장됩니다.
+          </p>
+
+          {roomsList.length === 0 ? (
+            <p className="text-center text-gray-500 text-sm py-8">실행 중인 방이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {roomsList.map((r) => (
+                <div key={r.roomCode} className="bg-gray-900 rounded-2xl p-4 flex items-center gap-4 flex-wrap">
+                  <span className="text-2xl font-mono font-bold tracking-widest text-white">{r.roomCode}</span>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${STATUS_STYLE[r.status] || 'bg-gray-700'}`}>
+                    {STATUS_LABEL[r.status] || r.status}
+                  </span>
+                  <span className="text-sm text-gray-300">
+                    👥 {r.onlineCount}/{r.playerCount}명
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    R{(r.currentRound ?? 0) + 1}/{r.totalRounds || 0}
+                  </span>
+                  <span className="text-xs text-gray-500">⏱ {formatAge(r.createdAt)} 경과</span>
+                  <button
+                    onClick={() => terminateRoom(r.roomCode)}
+                    className="ml-auto px-4 py-2 rounded-lg bg-red-800 hover:bg-red-700 font-bold text-sm transition-colors"
+                  >
+                    ⏹ 강제 종료
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

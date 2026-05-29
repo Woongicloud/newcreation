@@ -490,3 +490,13 @@ newcreation/
 | `consonantHint`에 글자 포함 | 자음(초성)만 입력: `ㅅㅇ` (서울) |
 | 이미지 파일 경로 누락 | `/media/` 폴더에 파일 있는지 확인 후 파일명만 입력 |
 | `roundNumber` 중복 | 각 라운드마다 고유한 번호 |
+
+---
+
+## 샘플 파일
+
+저장소 루트의 **`sample_quiz_set.json`** 은 7개 게임 모드를 모두 담은 실전용 샘플러입니다.
+Admin 패널 → "📂 JSON 파일 선택" 으로 그대로 업로드해 테스트하거나, 복사해서 실제 문제로 수정해 사용하세요.
+
+- 이미지 퀴즈는 `client/public/media/sample_image_1.svg`, `sample_image_2.svg` 플레이스홀더를 참조합니다 → 실제 사진으로 교체하세요.
+- 오디오 퀴즈(`sample_audio_1.mp3`)는 음원 파일을 직접 `client/public/media/` 에 추가해야 재생됩니다.

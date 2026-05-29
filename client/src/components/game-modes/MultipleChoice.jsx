@@ -30,7 +30,7 @@ export default function MultipleChoice({ question, onSubmit, hasSubmitted, corre
 
   const stateClass = {
     idle: '',
-    selected: 'ring-4 ring-white ring-offset-2 ring-offset-gray-900 scale-95',
+    selected: 'ring-4 ring-purple-500 ring-offset-2 ring-offset-white scale-95',
     correct: 'bg-green-500',
     wrong: 'bg-gray-600 opacity-60',
     dim: 'opacity-40',

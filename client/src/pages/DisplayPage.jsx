@@ -260,8 +260,8 @@ export default function DisplayPage() {
             exit={{ opacity: 0 }}
             className="flex w-full h-full"
           >
-            {/* 왼쪽: 문제 내용 (65%) */}
-            <div className="flex-[65] flex flex-col justify-center px-[3vw] py-[2vw] gap-[1.5vw]">
+            {/* 왼쪽: 문제 내용 (70%) */}
+            <div className="flex-[70] flex flex-col justify-center px-[3vw] py-[2vw] gap-[1.5vw]">
               {/* 라운드 배지 */}
               <div className="flex items-center gap-3">
                 <span
@@ -293,7 +293,7 @@ export default function DisplayPage() {
               )}
 
               {/* 문제 텍스트 */}
-              <p className="text-white font-bold leading-snug" style={{ fontSize: '3vw' }}>
+              <p className="text-white font-bold leading-snug" style={{ fontSize: '3.3vw' }}>
                 {question.content}
               </p>
 
@@ -321,8 +321,8 @@ export default function DisplayPage() {
               )}
             </div>
 
-            {/* 오른쪽: 타이머 + 응답 현황 (35%) */}
-            <div className="flex-[35] flex flex-col items-center justify-center gap-[2vw] border-l border-white/10 bg-black/20">
+            {/* 오른쪽: 타이머 + 응답 현황 (30%) */}
+            <div className="flex-[30] flex flex-col items-center justify-center gap-[2vw] border-l border-white/10 bg-black/20">
               {/* 원형 타이머 */}
               <div className="relative flex items-center justify-center" style={{ width: '12vw', height: '12vw' }}>
                 <svg width="100%" height="100%" viewBox="0 0 100 100" className="-rotate-90">
@@ -340,7 +340,7 @@ export default function DisplayPage() {
                 </svg>
                 <span
                   className="absolute font-black tabular-nums"
-                  style={{ fontSize: '4vw', color: timerColor }}
+                  style={{ fontSize: '3.2vw', color: timerColor }}
                 >
                   {timeRemaining}
                 </span>

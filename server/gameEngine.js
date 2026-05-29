@@ -25,6 +25,30 @@ function getSession(roomCode) {
   return sessions[roomCode] || null;
 }
 
+// 세션 내 playerId로 플레이어 조회 (socketId가 새로고침으로 바뀌어도 안전)
+function findPlayerById(session, playerId) {
+  for (const player of session.players.values()) {
+    if (player.id === playerId) return player;
+  }
+  return null;
+}
+
+// 온라인 인원 수 (isOnline === false 인 끊긴/유령 유저 제외)
+function onlineCount(session) {
+  let n = 0;
+  for (const player of session.players.values()) {
+    if (player.isOnline !== false) n++;
+  }
+  return n;
+}
+
+// socketId 엔트리를 세션에서 제거 (새 방 재등록 시 이전 방 유령 정리)
+function removePlayerFromSession(roomCode, socketId) {
+  const session = sessions[roomCode];
+  if (!session) return false;
+  return session.players.delete(socketId);
+}
+
 async function createSession(io) {
   let roomCode;
   let attempts = 0;
@@ -46,13 +70,14 @@ async function createSession(io) {
     sessionId: data.id,
     roomCode,
     status: GAME_STATUS.WAITING,
+    createdAt: Date.now(),
     rounds: [],
     currentRound: 0,
     currentQuestionIndex: 0,
     players: new Map(),       // socketId → { id, name, className, score, chatCount, totalResponseTimeMs, submitCount }
     timer: null,
     questionStartTime: null,
-    submittedAnswers: new Set(),
+    submittedAnswers: new Set(), // playerId 기준 (새로고침 재득점 방지)
     reactionResults: [],
     awards: null,
   };
@@ -234,12 +259,13 @@ function broadcastQuestion(roomCode, io) {
 async function submitAnswer(roomCode, socketId, { questionId, answer, responseTimeMs }, io) {
   const session = sessions[roomCode];
   if (!session || session.status !== GAME_STATUS.PLAYING) return;
-  if (session.submittedAnswers.has(socketId)) return;
-
-  session.submittedAnswers.add(socketId);
 
   const player = session.players.get(socketId);
   if (!player) return;
+
+  // playerId 기준 중복 제출 차단 — 새로고침으로 socketId가 바뀌어도 재득점 불가
+  if (session.submittedAnswers.has(player.id)) return;
+  session.submittedAnswers.add(player.id);
 
   const round = session.rounds[session.currentRound];
   const question = round?.questions[session.currentQuestionIndex];
@@ -280,11 +306,11 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
   // Display에 제출 카운트 알림 (정답 미포함)
   io.to(roomCode).emit(SOCKET_EVENTS.GAME_SHOW_RESULT, {
     submittedCount: session.submittedAnswers.size,
-    totalPlayers: session.players.size,
+    totalPlayers: onlineCount(session),
   });
 
-  // 모두 제출하면 즉시 종료
-  if (session.submittedAnswers.size >= session.players.size) {
+  // 온라인 인원이 모두 제출하면 즉시 종료 (끊긴/유령 유저는 제외)
+  if (session.submittedAnswers.size >= onlineCount(session)) {
     endQuestion(roomCode, io);
   }
 }
@@ -292,18 +318,20 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
 async function submitReaction(roomCode, socketId, { reactionTimeMs }, io) {
   const session = sessions[roomCode];
   if (!session) return;
-  if (session.submittedAnswers.has(socketId)) return;
 
-  session.submittedAnswers.add(socketId);
   const player = session.players.get(socketId);
   if (!player) return;
+
+  // playerId 기준 중복 차단
+  if (session.submittedAnswers.has(player.id)) return;
+  session.submittedAnswers.add(player.id);
 
   player.totalResponseTimeMs += reactionTimeMs;
   player.submitCount += 1;
 
   session.reactionResults.push({ socketId, playerId: player.id, name: player.name, reactionTimeMs });
 
-  if (session.submittedAnswers.size >= session.players.size) {
+  if (session.submittedAnswers.size >= onlineCount(session)) {
     endQuestion(roomCode, io);
   }
 }
@@ -326,7 +354,7 @@ function endQuestion(roomCode, io) {
     session.reactionResults.sort((a, b) => a.reactionTimeMs - b.reactionTimeMs);
     const maxPoints = question.maxScore || 1000;
     session.reactionResults.forEach((r, idx) => {
-      const player = session.players.get(r.socketId);
+      const player = findPlayerById(session, r.playerId);
       if (!player) return;
       const points = Math.max(100, Math.round(maxPoints * (1 - idx * 0.1)));
       player.score += points;
@@ -531,6 +559,8 @@ function rejoinSession(roomCode, socketId, playerId, io) {
         } : null,
         players: Array.from(session.players.values()),
         timeRemaining: session.timer ? null : 0,
+        // 이미 이 문제에 제출했는지 — 새로고침 시 "제출 완료" 상태 복원용
+        hasSubmitted: session.submittedAnswers.has(playerId),
       };
     }
   }
@@ -554,6 +584,37 @@ function getAwards(roomCode) {
   return session.awards;
 }
 
+// 활성 방 목록 요약 (관리자 모니터링용)
+function listSessions() {
+  return Object.values(sessions).map((s) => ({
+    roomCode: s.roomCode,
+    status: s.status,
+    playerCount: s.players.size,
+    onlineCount: onlineCount(s),
+    currentRound: s.currentRound,
+    totalRounds: s.rounds.length,
+    createdAt: s.createdAt,
+  }));
+}
+
+// 방 강제 종료 — 남은 유저를 내보내고 메모리에서 즉시 제거
+function terminateSession(roomCode, io) {
+  const session = sessions[roomCode];
+  if (!session) return false;
+
+  clearInterval(session.timer);
+  session.timer = null;
+  session.status = GAME_STATUS.FINISHED;
+  supabase.from('sessions').update({ status: GAME_STATUS.FINISHED }).eq('id', session.sessionId);
+
+  // 남은 참가자 강제 퇴장 (클라이언트는 GAME_SESSION_ENDED 수신 시 / 로 이동)
+  io.to(roomCode).emit(SOCKET_EVENTS.GAME_SESSION_ENDED, { finalLeaderboard: [] });
+
+  delete sessions[roomCode];
+  console.log(`[Game] Session ${roomCode} terminated by admin`);
+  return true;
+}
+
 export {
   createSession,
   registerPlayer,
@@ -570,4 +631,7 @@ export {
   rejoinSession,
   incrementChatCount,
   getAwards,
+  removePlayerFromSession,
+  listSessions,
+  terminateSession,
 };
