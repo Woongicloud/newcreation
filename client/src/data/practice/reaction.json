@@ -1,0 +1,17 @@
+{
+  "rounds": [
+    {
+      "roundNumber": 6,
+      "theme": "연습 — 반응게임",
+      "gameMode": "reaction",
+      "questions": [
+        {
+          "content": "신호가 뜨면 바로 누르세요!",
+          "correctAnswer": "__reaction__",
+          "timeLimit": 5,
+          "maxScore": 500
+        }
+      ]
+    }
+  ]
+}

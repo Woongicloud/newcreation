@@ -14,8 +14,8 @@ export default function WordGuess({ question, onSubmit, hasSubmitted, correctAns
 
   return (
     <form onSubmit={handleSubmit} className="w-full px-2 space-y-5">
-      <div className="bg-white/10 rounded-2xl py-6 px-4 text-center">
-        <p className="text-3xl font-bold text-white tracking-widest leading-relaxed">
+      <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl py-6 px-4 text-center shadow-sm">
+        <p className="text-3xl font-bold text-slate-800 tracking-widest leading-relaxed">
           {displayContent}
         </p>
       </div>
@@ -27,12 +27,12 @@ export default function WordGuess({ question, onSubmit, hasSubmitted, correctAns
         disabled={hasSubmitted}
         placeholder="빈칸의 단어를 맞춰보세요"
         autoComplete="off"
-        className="w-full px-4 py-4 rounded-2xl bg-white/10 border-2 border-white/20 text-white text-xl
-                   placeholder:text-gray-500 focus:outline-none focus:border-teal-400
+        className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-800 text-xl
+                   placeholder:text-slate-400 focus:outline-none focus:border-teal-400
                    disabled:opacity-60 touch-target"
       />
       {hasSubmitted && correctAnswer && (
-        <p className="text-center text-yellow-300 text-sm">
+        <p className="text-center text-amber-600 text-sm">
           정답: <span className="font-bold">{correctAnswer}</span>
         </p>
       )}

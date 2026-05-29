@@ -1,0 +1,17 @@
+{
+  "rounds": [
+    {
+      "roundNumber": 5,
+      "theme": "연습 — 이미지 퀴즈",
+      "gameMode": "image_quiz",
+      "questions": [
+        {
+          "content": "화면의 이미지를 보고 정답을 입력하세요",
+          "correctAnswer": "샘플",
+          "timeLimit": 20,
+          "maxScore": 500
+        }
+      ]
+    }
+  ]
+}

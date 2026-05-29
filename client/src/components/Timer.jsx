@@ -11,7 +11,7 @@ export default function Timer({ remaining, total }) {
   return (
     <div className="relative flex items-center justify-center w-24 h-24">
       <svg width="96" height="96" className="-rotate-90">
-        <circle cx="48" cy="48" r={RADIUS} fill="none" stroke="#374151" strokeWidth="8" />
+        <circle cx="48" cy="48" r={RADIUS} fill="none" stroke="#e2e8f0" strokeWidth="8" />
         <motion.circle
           cx="48" cy="48" r={RADIUS}
           fill="none"

@@ -1,0 +1,25 @@
+{
+  "rounds": [
+    {
+      "roundNumber": 3,
+      "theme": "연습 — 초성 퀴즈",
+      "gameMode": "consonant",
+      "questions": [
+        {
+          "content": "힌트를 보고 단어를 맞춰보세요!",
+          "consonantHint": "ㅅㅇ",
+          "correctAnswer": "서울",
+          "timeLimit": 20,
+          "maxScore": 500
+        },
+        {
+          "content": "힌트를 보고 단어를 맞춰보세요!",
+          "consonantHint": "ㄷㅎㅁㄱ",
+          "correctAnswer": "대한민국",
+          "timeLimit": 20,
+          "maxScore": 500
+        }
+      ]
+    }
+  ]
+}

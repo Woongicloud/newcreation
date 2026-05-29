@@ -1,0 +1,147 @@
+{
+  "sessionName": "행사용 샘플 문제 세트 (전 모드 샘플러)",
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "theme": "워밍업 — 객관식",
+      "gameMode": "multiple_choice",
+      "questions": [
+        {
+          "content": "성경에서 가장 먼저 나오는 책은 무엇일까요?",
+          "choices": ["창세기", "출애굽기", "시편", "요한복음"],
+          "correctAnswer": "창세기",
+          "timeLimit": 15,
+          "maxScore": 1000,
+          "penalty": 200
+        },
+        {
+          "content": "예수님이 물로 만드신 것은?",
+          "choices": ["빵", "포도주", "기름", "꿀"],
+          "correctAnswer": "포도주",
+          "timeLimit": 15,
+          "maxScore": 1000
+        },
+        {
+          "content": "다음 중 12제자가 아닌 사람은?",
+          "choices": ["베드로", "요한", "바울", "야고보"],
+          "correctAnswer": "바울",
+          "timeLimit": 18,
+          "maxScore": 1200
+        }
+      ]
+    },
+    {
+      "roundNumber": 2,
+      "theme": "단답형 퀴즈",
+      "gameMode": "short_answer",
+      "questions": [
+        {
+          "content": "노아가 만든 큰 배의 이름은? (두 글자)",
+          "correctAnswer": "방주",
+          "timeLimit": 20,
+          "maxScore": 1000
+        },
+        {
+          "content": "다윗이 물맷돌로 쓰러뜨린 거인의 이름은?",
+          "correctAnswer": "골리앗",
+          "timeLimit": 20,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 3,
+      "theme": "초성 퀴즈",
+      "gameMode": "consonant",
+      "questions": [
+        {
+          "content": "초성을 보고 단어를 맞혀보세요!",
+          "consonantHint": "ㅅㄹㅁ",
+          "correctAnswer": "사랑",
+          "timeLimit": 18,
+          "maxScore": 1000
+        },
+        {
+          "content": "초성을 보고 도시 이름을 맞혀보세요!",
+          "consonantHint": "ㅇㄹㅅㄹ",
+          "correctAnswer": "예루살렘",
+          "timeLimit": 20,
+          "maxScore": 1200
+        }
+      ]
+    },
+    {
+      "roundNumber": 4,
+      "theme": "빈칸 맞추기",
+      "gameMode": "word_guess",
+      "questions": [
+        {
+          "content": "믿음 소망 ___ (빠진 단어를 입력하세요)",
+          "correctAnswer": "사랑",
+          "timeLimit": 15,
+          "maxScore": 800
+        },
+        {
+          "content": "무 _ 개",
+          "correctAnswer": "무지개",
+          "timeLimit": 18,
+          "maxScore": 800
+        }
+      ]
+    },
+    {
+      "roundNumber": 5,
+      "theme": "이미지 퀴즈",
+      "gameMode": "image_quiz",
+      "questions": [
+        {
+          "content": "이 그림이 나타내는 단어는 무엇일까요?",
+          "imageUrl": "sample_image_1.svg",
+          "correctAnswer": "샘플",
+          "timeLimit": 20,
+          "maxScore": 1000
+        },
+        {
+          "content": "이 도형의 이름은? (예시 이미지를 실제 사진으로 교체하세요)",
+          "imageUrl": "sample_image_2.svg",
+          "correctAnswer": "별",
+          "timeLimit": 20,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 6,
+      "theme": "노래 퀴즈",
+      "gameMode": "audio_quiz",
+      "questions": [
+        {
+          "content": "이 찬양의 제목은 무엇일까요? (실제 음원 파일을 client/public/media/ 에 추가하세요)",
+          "audioUrl": "sample_audio_1.mp3",
+          "correctAnswer": "주 은혜임을",
+          "timeLimit": 30,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 7,
+      "theme": "반응 게임",
+      "gameMode": "reaction",
+      "questions": [
+        {
+          "content": "신호가 뜨면 가장 빠르게 누르세요!",
+          "correctAnswer": "__reaction__",
+          "timeLimit": 5,
+          "maxScore": 1000
+        },
+        {
+          "content": "한 번 더! 준비하고 신호를 기다리세요.",
+          "correctAnswer": "__reaction__",
+          "timeLimit": 5,
+          "maxScore": 1000
+        }
+      ]
+    }
+  ]
+}

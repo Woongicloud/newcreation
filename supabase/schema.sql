@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS questions (
   question_number INT NOT NULL,
   content TEXT NOT NULL,
   image_url TEXT,
+  audio_url TEXT,
   consonant_hint VARCHAR(20),
   correct_answer TEXT NOT NULL,
   choices JSONB,                   -- 객관식: ["①A","②B","③C","④D"]

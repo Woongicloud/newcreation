@@ -51,7 +51,7 @@ export default function ReactionGame({ hasSubmitted, onReact }) {
           className="flex flex-col items-center justify-center gap-4 py-8"
         >
           <div className="text-5xl animate-pulse">⏳</div>
-          <p className="text-gray-300 text-xl font-semibold">잠시 후 시작됩니다...</p>
+          <p className="text-slate-600 text-xl font-semibold">잠시 후 시작됩니다...</p>
         </motion.div>
       )}
 
@@ -63,11 +63,11 @@ export default function ReactionGame({ hasSubmitted, onReact }) {
           exit={{ opacity: 0 }}
           className="flex flex-col items-center justify-center gap-4 py-8"
         >
-          <div className="w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center">
+          <div className="w-32 h-32 rounded-full bg-slate-300 flex items-center justify-center">
             <span className="text-5xl">🤚</span>
           </div>
-          <p className="text-white text-2xl font-bold">준비하세요!</p>
-          <p className="text-gray-400 text-sm">신호가 뜨면 바로 누르세요</p>
+          <p className="text-slate-800 text-2xl font-bold">준비하세요!</p>
+          <p className="text-slate-500 text-sm">신호가 뜨면 바로 누르세요</p>
         </motion.div>
       )}
 
@@ -93,10 +93,10 @@ export default function ReactionGame({ hasSubmitted, onReact }) {
           className="flex flex-col items-center justify-center gap-4 py-8"
         >
           <div className="text-5xl">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '✅'}</div>
-          <p className="text-white text-2xl font-bold">
+          <p className="text-slate-800 text-2xl font-bold">
             {rank ? `${rank}번째로 눌렀습니다!` : '제출 완료!'}
           </p>
-          <p className="text-gray-400 text-sm">결과를 기다리는 중...</p>
+          <p className="text-slate-500 text-sm">결과를 기다리는 중...</p>
         </motion.div>
       )}
     </AnimatePresence>

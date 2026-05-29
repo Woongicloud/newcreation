@@ -4,6 +4,7 @@ export const GAME_MODES = {
   CONSONANT: 'consonant',
   WORD_GUESS: 'word_guess',
   IMAGE_QUIZ: 'image_quiz',
+  AUDIO_QUIZ: 'audio_quiz',
   REACTION: 'reaction',
 };
 
@@ -20,6 +21,8 @@ export const SOCKET_EVENTS = {
   ADMIN_NEXT_QUESTION: 'admin:next_question',
   ADMIN_NEXT_ROUND: 'admin:next_round',
   ADMIN_END_GAME: 'admin:end_game',
+  ADMIN_LIST_ROOMS: 'admin:list_rooms',
+  ADMIN_TERMINATE_ROOM: 'admin:terminate_room',
 
   // Server → Client
   GAME_PLAYER_JOINED: 'game:player_joined',
@@ -31,8 +34,15 @@ export const SOCKET_EVENTS = {
   GAME_REACTION_START: 'game:reaction_start',
   GAME_REACTION_END: 'game:reaction_end',
   GAME_STATE_SYNC: 'game:state_sync',
+  GAME_SESSION_ENDED: 'game:session_ended',
+  GAME_AWARDS_DATA: 'game:awards_data',
   CHAT_MESSAGE: 'chat:message',
   ERROR: 'error',
+
+  ADMIN_ROOMS_DATA: 'admin:rooms_data',
+
+  // Admin
+  ADMIN_GET_AWARDS: 'admin:get_awards',
 };
 
 export const GAME_STATUS = {

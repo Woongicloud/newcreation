@@ -1,0 +1,25 @@
+{
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "theme": "연습 — 객관식",
+      "gameMode": "multiple_choice",
+      "questions": [
+        {
+          "content": "1 + 1 = ?",
+          "choices": ["1", "2", "3", "4"],
+          "correctAnswer": "2",
+          "timeLimit": 15,
+          "maxScore": 500
+        },
+        {
+          "content": "대한민국의 수도는?",
+          "choices": ["부산", "대구", "서울", "인천"],
+          "correctAnswer": "서울",
+          "timeLimit": 15,
+          "maxScore": 500
+        }
+      ]
+    }
+  ]
+}

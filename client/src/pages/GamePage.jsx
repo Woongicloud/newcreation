@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import socket from '../lib/socket.js';
 import useGameStore from '../store/gameStore.js';
 import { SOCKET_EVENTS, GAME_MODES } from '@shared/constants.js';
@@ -8,12 +7,16 @@ import Timer from '../components/Timer.jsx';
 import ResultModal from '../components/ResultModal.jsx';
 import ChatInput from '../components/chat/ChatInput.jsx';
 import Scoreboard from '../components/Scoreboard.jsx';
+import GameGuideModal from '../components/GameGuideModal.jsx';
 import MultipleChoice from '../components/game-modes/MultipleChoice.jsx';
 import ShortAnswer from '../components/game-modes/ShortAnswer.jsx';
 import ConsonantQuiz from '../components/game-modes/ConsonantQuiz.jsx';
 import WordGuess from '../components/game-modes/WordGuess.jsx';
 import ImageQuiz from '../components/game-modes/ImageQuiz.jsx';
+import AudioQuiz from '../components/game-modes/AudioQuiz.jsx';
 import ReactionGame from '../components/game-modes/ReactionGame.jsx';
+
+const LS_KEYS = ['playerId', 'roomCode', 'playerName', 'playerClass'];
 
 export default function GamePage() {
   const navigate = useNavigate();
@@ -30,6 +33,7 @@ export default function GamePage() {
   const [correctAnswer, setCorrectAnswer] = useState(null);
   const [phase, setPhase] = useState('game'); // game | roundEnd
   const [reconnecting, setReconnecting] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     if (!player) {
@@ -43,16 +47,22 @@ export default function GamePage() {
       const doRejoin = () => socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId: savedId, roomCode: savedRoom });
       if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
 
-      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp }) => {
+      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp, hasSubmitted: hs }) => {
         const myPlayer = sp?.find(p => p.id === savedId)
           || { id: savedId, name: localStorage.getItem('playerName') || '', className: localStorage.getItem('playerClass') || '', score: 0 };
         setPlayer(myPlayer);
         setRoomCode(savedRoom);
         if (sp) setPlayers(sp);
         setReconnecting(false);
-        if (q) { setCurrentQuestion({ ...q }); setTimeRemaining(tr || 0); setPhase('game'); }
+        if (q) {
+          setCurrentQuestion({ ...q });
+          setTimeRemaining(tr || 0);
+          setPhase('game');
+          // 이미 제출한 문제면 "제출 완료" 상태 복원 (새로고침 재득점 방지)
+          if (hs) setHasSubmitted(true);
+        }
       };
-      const onFail = () => { localStorage.removeItem('playerId'); localStorage.removeItem('roomCode'); navigate('/'); };
+      const onFail = () => { LS_KEYS.forEach((k) => localStorage.removeItem(k)); navigate('/'); };
 
       socket.once(SOCKET_EVENTS.GAME_STATE_SYNC, onSync);
       socket.once('error', onFail);
@@ -78,11 +88,12 @@ export default function GamePage() {
       }
     };
 
-    const onStateSync = ({ currentQuestion: q, timeRemaining: tr }) => {
+    const onStateSync = ({ currentQuestion: q, timeRemaining: tr, hasSubmitted: hs }) => {
       if (q) {
         setCurrentQuestion({ ...q });
         setTimeRemaining(tr || 0);
         setPhase('game');
+        if (hs) setHasSubmitted(true);
       }
     };
 
@@ -104,12 +115,17 @@ export default function GamePage() {
     };
 
     const onQuestionEnd = ({ correctAnswer: ans }) => {
-      setCorrectAnswer(ans); // state 업데이트 → 리렌더 발생
+      setCorrectAnswer(ans);
     };
 
-    const onRoundEnd = ({ leaderboard: lb, isFinal }) => {
+    const onRoundEnd = ({ leaderboard: lb }) => {
       setLeaderboard(lb);
       setPhase('roundEnd');
+    };
+
+    const onSessionEnded = () => {
+      LS_KEYS.forEach((k) => localStorage.removeItem(k));
+      navigate('/');
     };
 
     socket.on('connect', onReconnect);
@@ -119,6 +135,7 @@ export default function GamePage() {
     socket.on(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
     socket.on(SOCKET_EVENTS.GAME_ROUND_END, onRoundEnd);
+    socket.on(SOCKET_EVENTS.GAME_SESSION_ENDED, onSessionEnded);
 
     return () => {
       socket.off('connect', onReconnect);
@@ -128,6 +145,7 @@ export default function GamePage() {
       socket.off(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
       socket.off(SOCKET_EVENTS.GAME_ROUND_END, onRoundEnd);
+      socket.off(SOCKET_EVENTS.GAME_SESSION_ENDED, onSessionEnded);
     };
   }, [player?.id]);
 
@@ -150,10 +168,10 @@ export default function GamePage() {
 
   if (reconnecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center bg-pinwheel">
+        <div className="text-center bg-white/80 backdrop-blur rounded-2xl px-8 py-6 shadow-lg">
           <div className="text-4xl mb-4 animate-spin">🔄</div>
-          <p className="text-white text-lg font-semibold">재연결 중...</p>
+          <p className="text-slate-700 text-lg font-semibold">재연결 중...</p>
         </div>
       </div>
     );
@@ -165,65 +183,70 @@ export default function GamePage() {
   // ── 라운드 종료 → 순위표 화면 ────────────────────────────
   if (phase === 'roundEnd') {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950">
-        <div className="flex items-center justify-between px-4 py-3 bg-black/30 border-b border-white/10 shrink-0">
-          <p className="text-gray-300 text-sm font-semibold">📊 라운드 결과</p>
-          <p className="text-yellow-400 font-bold font-mono">{score.toLocaleString()}</p>
+      <div className="min-h-screen flex flex-col bg-pinwheel">
+        <div className="flex items-center justify-between px-4 py-3 bg-white/70 backdrop-blur border-b border-slate-200 shrink-0">
+          <p className="text-slate-700 text-sm font-semibold">📊 라운드 결과</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGuide(true)}
+              className="text-xs font-semibold text-purple-700 bg-white/80 border border-purple-200 rounded-full px-3 py-1 active:scale-95 transition-transform"
+            >
+              ❓ 게임방법
+            </button>
+            <p className="text-amber-600 font-bold font-mono">{score.toLocaleString()}</p>
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center py-6 px-4">
-          <Scoreboard leaderboard={leaderboard} />
+          {/* Scoreboard 는 Display 와 공용(흰 글씨)이라 어두운 패널로 감싸 가독성 유지 */}
+          <div className="w-full max-w-2xl bg-slate-900/90 rounded-3xl py-6 shadow-xl">
+            <Scoreboard leaderboard={leaderboard} />
+          </div>
         </div>
-        <p className="text-center text-gray-500 text-sm pb-4">진행자가 다음 라운드를 시작하면 이동됩니다</p>
+        <p className="text-center text-slate-500 text-sm pb-4">진행자가 다음 라운드를 시작하면 이동됩니다</p>
         <div className="shrink-0"><ChatInput /></div>
+        <GameGuideModal open={showGuide} onClose={() => setShowGuide(false)} />
       </div>
     );
   }
 
   // ── 게임 화면 ─────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950">
+    <div className="min-h-screen flex flex-col bg-pinwheel">
       {/* 상단 헤더 */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/30 border-b border-white/10 shrink-0">
-        <div>
+      <div className="flex items-center justify-between gap-2 px-4 py-3 bg-white/70 backdrop-blur border-b border-slate-200 shrink-0">
+        <div className="min-w-0">
           {currentQuestion ? (
             <>
-              <p className="text-gray-400 text-xs">
+              <p className="text-slate-500 text-xs truncate">
                 R{currentQuestion.roundNumber} · {currentQuestion.theme}
               </p>
-              <p className="text-white text-sm font-semibold">Q{currentQuestion.questionNumber}</p>
+              <p className="text-slate-800 text-sm font-semibold">Q{currentQuestion.questionNumber}</p>
             </>
           ) : (
-            <p className="text-gray-400 text-sm">게임 진행 중...</p>
+            <p className="text-slate-500 text-sm">게임 진행 중...</p>
           )}
         </div>
-        <div className="text-right">
-          <p className="text-gray-400 text-xs">내 점수</p>
-          <p className="text-yellow-400 text-lg font-bold font-mono">{score.toLocaleString()}</p>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowGuide(true)}
+            className="text-xs font-semibold text-purple-700 bg-white/80 border border-purple-200 rounded-full px-3 py-1.5 active:scale-95 transition-transform touch-target"
+          >
+            ❓ 게임방법
+          </button>
+          <div className="text-right">
+            <p className="text-slate-500 text-xs">내 점수</p>
+            <p className="text-amber-600 text-lg font-bold font-mono">{score.toLocaleString()}</p>
+          </div>
         </div>
       </div>
 
-      {/* 문제 + 게임 영역 */}
+      {/* 게임 영역 — 문제 텍스트는 Display(프로젝터)에서 확인 */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {currentQuestion ? (
           <div className="flex flex-col gap-4 px-4 pt-4 pb-2">
-            {/* 타이머 + 문제 */}
-            <div className="flex items-start gap-3">
+            {/* 타이머 (중앙) */}
+            <div className="flex justify-center">
               <Timer remaining={timeRemaining} total={currentQuestion.timeLimit} />
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-base font-semibold leading-snug">
-                  {currentQuestion.content}
-                </p>
-                {/* 정답 공개 배너 */}
-                {correctAnswer && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm text-yellow-300 font-semibold"
-                  >
-                    정답: {correctAnswer}
-                  </motion.p>
-                )}
-              </div>
             </div>
 
             {/* 게임 모드 컴포넌트 */}
@@ -272,6 +295,15 @@ export default function GamePage() {
                   correctAnswer={correctAnswer}
                 />
               )}
+              {gameMode === GAME_MODES.AUDIO_QUIZ && (
+                <AudioQuiz
+                  key={currentQuestion.id}
+                  question={currentQuestion}
+                  onSubmit={handleSubmit}
+                  hasSubmitted={hasSubmitted}
+                  correctAnswer={correctAnswer}
+                />
+              )}
               {gameMode === GAME_MODES.REACTION && (
                 <ReactionGame key={currentQuestion.id} hasSubmitted={hasSubmitted} onReact={handleReact} />
               )}
@@ -281,15 +313,16 @@ export default function GamePage() {
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
+            <div className="text-center bg-white/75 backdrop-blur rounded-2xl px-8 py-6 shadow-lg">
               <div className="text-5xl mb-4 animate-pulse">🎮</div>
-              <p className="text-white text-xl font-semibold">다음 문제를 기다리는 중...</p>
+              <p className="text-slate-700 text-xl font-semibold">다음 문제를 기다리는 중...</p>
             </div>
           </div>
         )}
       </div>
 
       <div className="shrink-0"><ChatInput /></div>
+      <GameGuideModal open={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 }
