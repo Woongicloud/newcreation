@@ -24,7 +24,7 @@ const useGameStore = create((set) => ({
   setPlayers: (players) => set({ players }),
   setCurrentQuestion: (currentQuestion) => set({ currentQuestion, hasSubmitted: false, lastResult: null }),
   setTimeRemaining: (timeRemaining) => set({ timeRemaining }),
-  setHasSubmitted: () => set({ hasSubmitted: true }),
+  setHasSubmitted: (val = true) => set({ hasSubmitted: val }),
   setLastResult: (lastResult) => set({ lastResult }),
   setLeaderboard: (leaderboard) => set({ leaderboard }),
   updatePlayerScore: (playerId, score) =>

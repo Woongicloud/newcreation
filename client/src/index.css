@@ -20,6 +20,18 @@
     min-height: 44px;
     min-width: 44px;
   }
+
+  /* 참가자 화면용 파스텔 바람개비 배경 (밝은 테마) */
+  .bg-pinwheel {
+    background-color: #eef4ee;
+    background-image:
+      linear-gradient(180deg, rgba(244, 247, 244, 0.55), rgba(238, 244, 238, 0.2)),
+      url('/media/bg-pinwheel.svg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: bottom center;
+    background-attachment: fixed;
+  }
 }
 
 @keyframes slide-left {
