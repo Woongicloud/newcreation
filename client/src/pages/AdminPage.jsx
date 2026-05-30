@@ -38,6 +38,8 @@ export default function AdminPage() {
   // 모니터링 (활성 방 목록)
   const [roomsList, setRoomsList] = useState([]);
   const [nowTs, setNowTs] = useState(Date.now());
+  const [allRoundsDone, setAllRoundsDone] = useState(false);        // 모든 라운드 완료(종료 버튼 대기)
+  const [selectedAwardsRoom, setSelectedAwardsRoom] = useState(''); // 시상 대상으로 선택한 종료된 방
 
   function addLog(msg) {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 19)]);
@@ -68,14 +70,20 @@ export default function AdminPage() {
       setCurrentQuestion(question);
       setSubmittedCount(0);
       setRoundEndLeaderboard(null);
+      setAllRoundsDone(false);
       setGameStatus('playing');
       addLog(`문제 시작: ${question.content.slice(0, 30)}...`);
     });
 
-    socket.on(SOCKET_EVENTS.GAME_ROUND_END, ({ leaderboard: lb, isFinal }) => {
+    socket.on(SOCKET_EVENTS.GAME_ROUND_END, ({ leaderboard: lb, isFinal, allRoundsComplete }) => {
       setRoundEndLeaderboard(lb);
       if (isFinal) setGameStatus('finished');
-      addLog(isFinal ? '게임 종료 — 최종 순위표' : '라운드 종료 — 다음 라운드 시작 버튼을 눌러주세요');
+      if (allRoundsComplete) {
+        setAllRoundsDone(true);
+        addLog('모든 라운드 완료 — "게임 종료 & 시상" 버튼을 눌러주세요');
+      } else {
+        addLog(isFinal ? '게임 종료 — 최종 순위표' : '라운드 종료 — 다음 라운드 시작 버튼을 눌러주세요');
+      }
     });
 
     socket.on(SOCKET_EVENTS.GAME_QUESTION_END, ({ submittedCount: sc }) => {
@@ -93,6 +101,7 @@ export default function AdminPage() {
       setQuestionsLoaded(false);
       setAwardsData(null);
       setRevealedAwards({});
+      setAllRoundsDone(false);
       addLog(`방 생성: ${rc}`);
     });
 
@@ -185,8 +194,29 @@ export default function AdminPage() {
   }
 
   // ── 시상 기능 ──────────────────────────────────────────────
+  const awardsRoom = selectedAwardsRoom || roomCode;
+
   function handleLoadAwards() {
-    emit(SOCKET_EVENTS.ADMIN_GET_AWARDS);
+    if (!awardsRoom) return;
+    socket.emit(SOCKET_EVENTS.ADMIN_GET_AWARDS, { password: ADMIN_PASSWORD, roomCode: awardsRoom });
+  }
+
+  // 종료된 방을 시상 대상으로 선택 → 해당 방 시상 데이터 로드
+  function selectAwardsRoom(code) {
+    setSelectedAwardsRoom(code);
+    setAwardsData(null);
+    setRevealedAwards({});
+    setSlotWinner(null);
+    socket.emit(SOCKET_EVENTS.ADMIN_GET_AWARDS, { password: ADMIN_PASSWORD, roomCode: code });
+    addLog(`시상 대상 선택: ${code}`);
+  }
+
+  // 시상 화면을 Display(프로젝터)로 송출
+  function showAwardOnDisplay(award) {
+    const target = awardsRoom;
+    if (!target) return;
+    socket.emit(SOCKET_EVENTS.ADMIN_SHOW_AWARD, { password: ADMIN_PASSWORD, roomCode: target, award });
+    addLog(award.type === 'clear' ? 'Display 대기화면 전환' : `Display 송출: ${award.title || award.name || ''}`);
   }
 
   function revealAward(key) {
@@ -325,7 +355,7 @@ export default function AdminPage() {
           🎛 컨트롤
         </button>
         <button
-          onClick={() => setActiveTab('awards')}
+          onClick={() => { setActiveTab('awards'); refreshRooms(); }}
           className={`px-5 py-2 rounded-lg font-bold text-sm transition-colors ${
             activeTab === 'awards' ? 'bg-yellow-600' : 'bg-gray-800 hover:bg-gray-700'
           }`}
@@ -347,7 +377,9 @@ export default function AdminPage() {
         <>
           {roundEndLeaderboard && (
             <div className="mb-4 bg-yellow-900/50 border border-yellow-600 rounded-xl px-4 py-3">
-              <p className="text-yellow-300 font-bold text-sm mb-2">📊 라운드 종료 — 순위표</p>
+              <p className="text-yellow-300 font-bold text-sm mb-2">
+                {allRoundsDone ? '🏁 모든 라운드 완료' : '📊 라운드 종료 — 순위표'}
+              </p>
               <div className="space-y-1 mb-3">
                 {roundEndLeaderboard.slice(0, 5).map((p) => (
                   <div key={p.rank} className="flex items-center gap-2 text-sm">
@@ -357,12 +389,21 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => emit(SOCKET_EVENTS.ADMIN_NEXT_ROUND)}
-                className="w-full py-2 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-bold text-sm transition-colors"
-              >
-                🔄 다음 라운드 시작
-              </button>
+              {allRoundsDone ? (
+                <button
+                  onClick={() => { if (confirm('게임을 종료하고 시상을 준비하시겠습니까?')) emit(SOCKET_EVENTS.ADMIN_END_GAME); }}
+                  className="w-full py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-bold text-sm transition-colors"
+                >
+                  🏆 게임 종료 & 시상 준비
+                </button>
+              ) : (
+                <button
+                  onClick={() => emit(SOCKET_EVENTS.ADMIN_NEXT_ROUND)}
+                  className="w-full py-2 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-bold text-sm transition-colors"
+                >
+                  🔄 다음 라운드 시작
+                </button>
+              )}
             </div>
           )}
 
@@ -505,16 +546,65 @@ export default function AdminPage() {
       {/* ── 시상 탭 ────────────────────────────────────────── */}
       {activeTab === 'awards' && (
         <div className="space-y-4">
-          <button
-            onClick={handleLoadAwards}
-            disabled={!roomCode}
-            className="w-full py-3 rounded-xl bg-yellow-700 hover:bg-yellow-600 font-bold transition-colors disabled:opacity-40"
-          >
-            🏆 시상 데이터 불러오기
-          </button>
+          {/* 종료된 방 선택 (모니터링처럼 목록에서 클릭) */}
+          <div className="bg-gray-900 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-gray-300 font-semibold text-sm">🏁 종료된 방 선택 (연습 게임 포함)</p>
+              <button
+                onClick={refreshRooms}
+                className="px-3 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 font-bold text-xs transition-colors"
+              >
+                🔄 새로고침
+              </button>
+            </div>
+            {(() => {
+              const finished = roomsList.filter((r) => r.status === 'finished' || r.hasAwards);
+              if (finished.length === 0) {
+                return (
+                  <p className="text-gray-500 text-sm">
+                    종료된 방이 없습니다. 게임을 종료하면 여기에 표시됩니다.
+                  </p>
+                );
+              }
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {finished.map((r) => (
+                    <button
+                      key={r.roomCode}
+                      onClick={() => selectAwardsRoom(r.roomCode)}
+                      className={`px-4 py-2 rounded-lg font-mono font-bold text-sm transition-colors ${
+                        awardsRoom === r.roomCode ? 'bg-yellow-600 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
+                      }`}
+                    >
+                      {r.roomCode}
+                      <span className="ml-2 text-xs font-sans font-normal opacity-80">{r.playerCount}명</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleLoadAwards}
+              disabled={!awardsRoom}
+              className="flex-1 py-3 rounded-xl bg-yellow-700 hover:bg-yellow-600 font-bold transition-colors disabled:opacity-40"
+            >
+              🏆 시상 데이터 불러오기{awardsRoom ? ` (${awardsRoom})` : ''}
+            </button>
+            <button
+              onClick={() => showAwardOnDisplay({ type: 'clear' })}
+              disabled={!awardsRoom}
+              className="px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 font-bold text-sm transition-colors disabled:opacity-40"
+              title="Display 를 순위표/대기화면으로"
+            >
+              📺 대기화면
+            </button>
+          </div>
 
           {!awardsData && (
-            <p className="text-center text-gray-500 text-sm">게임 종료 후 데이터를 불러오세요.</p>
+            <p className="text-center text-gray-500 text-sm">종료된 방을 선택하고 시상 데이터를 불러오세요.</p>
           )}
 
           {awardsData && (
@@ -540,14 +630,27 @@ export default function AdminPage() {
                       <p className="text-gray-600 text-2xl font-black mt-1">???</p>
                     )}
                   </div>
-                  {!revealedAwards[key] && (
-                    <button
-                      onClick={() => revealAward(key)}
-                      className="shrink-0 px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-sm transition-colors"
-                    >
-                      공개
-                    </button>
-                  )}
+                  <div className="shrink-0 flex flex-col gap-2">
+                    {!revealedAwards[key] && (
+                      <button
+                        onClick={() => revealAward(key)}
+                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-sm transition-colors"
+                      >
+                        공개
+                      </button>
+                    )}
+                    {data && (
+                      <button
+                        onClick={() => {
+                          revealAward(key);
+                          showAwardOnDisplay({ type: 'category', title, name: data.name, className: data.className, detail: extra ? extra(data) : '' });
+                        }}
+                        className="px-4 py-2 bg-purple-700 hover:bg-purple-600 rounded-lg font-bold text-sm transition-colors"
+                      >
+                        📺 표시
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
 
@@ -580,6 +683,13 @@ export default function AdminPage() {
                     className="flex-1 py-3 rounded-lg bg-red-700 hover:bg-red-600 font-bold transition-colors disabled:opacity-40"
                   >
                     ■ 멈추기
+                  </button>
+                  <button
+                    onClick={() => slotWinner && showAwardOnDisplay({ type: 'slot', title: '🎰 랜덤 수상', name: slotWinner.name, className: slotWinner.className })}
+                    disabled={!slotWinner}
+                    className="flex-1 py-3 rounded-lg bg-purple-700 hover:bg-purple-600 font-bold transition-colors disabled:opacity-40"
+                  >
+                    📺 표시
                   </button>
                 </div>
               </div>
