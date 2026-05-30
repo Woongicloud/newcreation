@@ -1,0 +1,219 @@
+{
+  "sessionName": "청소년 주일 - 뉴크리에이션",
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "theme": "객관식 퀴즈",
+      "gameMode": "multiple_choice",
+      "questions": [
+        {
+          "content": "",
+          "choices": ["", "", "", ""],
+          "correctAnswer": "",
+          "timeLimit": 10,
+          "maxScore": 200,
+          "penalty": 100
+        },
+        {
+          "content": "",
+          "choices": ["", "", "", ""],
+          "correctAnswer": "",
+          "timeLimit": 15,
+          "maxScore": 200,
+          "penalty": 100
+        }
+      ]
+    },
+    {
+      "roundNumber": 2,
+      "theme": "넌센스 퀴즈",
+      "gameMode": "short_answer",
+      "questions": [
+        {
+          "content": "",
+          "correctAnswer": "",
+          "timeLimit": 20,
+          "maxScore": 300
+        },
+        {
+          "content": "",
+          "correctAnswer": "",
+          "timeLimit": 20,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 3,
+      "theme": "초성 퀴즈",
+      "gameMode": "consonant",
+      "questions": [
+        {
+          "content": "",
+          "consonantHint": "",
+          "correctAnswer": "",
+          "timeLimit": 18,
+          "maxScore": 300,
+          "panalty": 300
+        },
+        {
+          "content": "힌트 - 아이돌",
+          "consonantHint": "ㅇㅇㅇㅇㅇ",
+          "correctAnswer": "아이오아이",
+          "timeLimit": 10,
+          "maxScore": 300
+        }
+      ]
+    },
+    {
+      "roundNumber": 4,
+      "theme": "말씀 빈칸 맞추기",
+      "gameMode": "word_guess",
+      "questions": [
+        {
+          "content": "",
+          "correctAnswer": "",
+          "timeLimit": 15,
+          "maxScore": 500
+        },
+        {
+          "content": "",
+          "correctAnswer": "",
+          "timeLimit": 18,
+          "maxScore": 500
+        }
+      ]
+    },
+    {
+      "roundNumber": 5,
+      "theme": "이미지 퀴즈",
+      "gameMode": "image_quiz",
+      "questions": [
+        {
+          "content": "이 그림이 나타내는 단어는 무엇일까요?",
+          "imageUrl": "sample_image_1.svg",
+          "correctAnswer": "샘플",
+          "timeLimit": 20,
+          "maxScore": 1000
+        },
+        {
+          "content": "이 도형의 이름은? (예시 이미지를 실제 사진으로 교체하세요)",
+          "imageUrl": "sample_image_2.svg",
+          "correctAnswer": "별",
+          "timeLimit": 20,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 6,
+      "theme": "노래 퀴즈",
+      "gameMode": "audio_quiz",
+      "questions": [
+        {
+          "content": "이 찬양의 제목은 무엇일까요? (실제 음원 파일을 client/public/media/ 에 추가하세요)",
+          "audioUrl": "sample_audio_1.mp3",
+          "correctAnswer": "주 은혜임을",
+          "timeLimit": 30,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 7,
+      "theme": "반응 속도 게임",
+      "gameMode": "reaction",
+      "questions": [
+        {
+          "content": "신호가 뜨면 가장 빠르게 누르세요!",
+          "correctAnswer": "__reaction__",
+          "timeLimit": 5,
+          "maxScore": 1000
+        },
+        {
+          "content": "한 번 더! 준비하고 신호를 기다리세요.",
+          "correctAnswer": "__reaction__",
+          "timeLimit": 5,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 8,
+      "theme": "이미지 객관식",
+      "gameMode": "image_multiple_choice",
+      "questions": [
+        {
+          "content": "이 그림과 가장 관련 있는 단어는?",
+          "imageUrl": "sample_image_1.svg",
+          "choices": ["샘플", "바다", "사막", "우주"],
+          "correctAnswer": "샘플",
+          "timeLimit": 20,
+          "maxScore": 1000
+        },
+        {
+          "content": "이 도형의 이름은? (예시 이미지를 실제 사진으로 교체하세요)",
+          "imageUrl": "sample_image_2.svg",
+          "choices": ["원", "별", "삼각형", "사각형"],
+          "correctAnswer": "별",
+          "timeLimit": 18,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 9,
+      "theme": "이미지 기억력 테스트",
+      "gameMode": "image_memory",
+      "questions": [
+        {
+          "content": "방금 본 이미지 속 도형은 무엇이었나요?",
+          "imageUrl": "sample_image_2.svg",
+          "memorizeDuration": 10,
+          "choices": ["별", "하트", "번개", "달"],
+          "correctAnswer": "별",
+          "timeLimit": 15,
+          "maxScore": 1000
+        },
+        {
+          "content": "이미지에 그 도형이 몇 개 있었나요?",
+          "memorizeDuration": 0,
+          "choices": ["1개", "2개", "3개", "4개"],
+          "correctAnswer": "1개",
+          "timeLimit": 15,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 10,
+      "theme": "이모지 사람 찾기",
+      "gameMode": "emoji_find",
+      "questions": [
+        {
+          "content": "같은 이모지 세트를 가진 사람을 찾아 그 사람의 코드를 입력하세요!",
+          "emojiPool": ["🐶", "🐱", "🦁", "🐰", "🐻", "🦊", "🚗", "🚀", "🏠", "🌳", "⚽", "🎸", "🍎", "🌙", "⭐", "🍩"],
+          "setSize": 3,
+          "groupSize": 2,
+          "correctAnswer": "__emoji_find__",
+          "timeLimit": 60,
+          "maxScore": 1000
+        }
+      ]
+    },
+    {
+      "roundNumber": 11,
+      "theme": "말씀 타이핑",
+      "gameMode": "long_typing",
+      "questions": [
+        {
+          "content": "큰 화면의 말씀을 정확하게 따라 입력하세요",
+          "correctAnswer": "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
+          "timeLimit": 90,
+          "maxScore": 1000,
+          "passThreshold": 0.9
+        }
+      ]
+    }
+  ]
+}
