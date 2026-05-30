@@ -50,6 +50,10 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 | `image_quiz` | 이미지 퀴즈 | 이미지 보고 정답 입력 |
 | `audio_quiz` | 오디오 퀴즈 | 음악/소리 듣고 정답 입력 |
 | `reaction` | 반응 게임 | 신호 뜨면 빠르게 누르기 |
+| `image_multiple_choice` | 이미지 객관식 | 이미지 보고 4지선다 |
+| `image_memory` | 이미지 기억력 | 이미지를 잠깐 보여준 뒤 객관식 출제 |
+| `emoji_find` | 이모지 사람 찾기 | 같은 이모지 세트 가진 사람의 코드 입력 |
+| `long_typing` | 장문 타이핑 | 화면의 긴 글을 따라 입력 |
 
 ---
 
@@ -328,6 +332,149 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ---
 
+### 8. 이미지 객관식 `image_multiple_choice`
+
+이미지를 보여주고 4지선다로 정답을 고르는 모드. (기존 `image_quiz` 주관식 버전과 별개)  
+프로젝터·휴대폰 모두에 이미지가 표시됩니다.
+
+```json
+{
+  "roundNumber": 8,
+  "theme": "이미지 객관식",
+  "gameMode": "image_multiple_choice",
+  "questions": [
+    {
+      "content": "이 인물은 누구일까요?",
+      "imageUrl": "moses.jpg",
+      "choices": ["모세", "아브라함", "다윗", "엘리야"],
+      "correctAnswer": "모세",
+      "timeLimit": 20,
+      "maxScore": 1000
+    }
+  ]
+}
+```
+
+| 추가 필드 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `imageUrl` | string | ✅ | 파일명 또는 절대 URL |
+| `choices` | array(string) | ✅ | 선택지 4개 |
+
+---
+
+### 9. 이미지 기억력 테스트 `image_memory`
+
+이미지를 **설정 시간(`memorizeDuration`)만큼 한 번 보여준 뒤 숨기고**, 그 이미지에 대한 객관식 문제를 **연속으로** 출제합니다. (한 이미지에 여러 문제 가능)
+
+- 한 라운드 = 한 이미지 블록.
+- **첫 문제**에만 `imageUrl` + `memorizeDuration`(>0) 을 넣어 이미지를 보여줍니다.
+- **이후 문제**들은 `memorizeDuration: 0` 으로 두면 이미지를 다시 보여주지 않고(기억에 의존) 바로 객관식을 냅니다.
+- 이미지는 **프로젝터에만** 표시됩니다 (휴대폰엔 "기억하세요" 안내).
+
+```json
+{
+  "roundNumber": 9,
+  "theme": "이미지 기억력 테스트",
+  "gameMode": "image_memory",
+  "questions": [
+    {
+      "content": "방금 본 그림 속 사람은 몇 명이었나요?",
+      "imageUrl": "scene.jpg",
+      "memorizeDuration": 10,
+      "choices": ["3명", "4명", "5명", "6명"],
+      "correctAnswer": "5명",
+      "timeLimit": 15,
+      "maxScore": 1000
+    },
+    {
+      "content": "강아지는 몇 마리였나요?",
+      "memorizeDuration": 0,
+      "choices": ["0", "1", "2", "3"],
+      "correctAnswer": "2",
+      "timeLimit": 15,
+      "maxScore": 1000
+    }
+  ]
+}
+```
+
+| 추가 필드 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `imageUrl` | string | 첫 문제 | 암기할 이미지 (파일명 또는 URL) |
+| `memorizeDuration` | number | 첫 문제 | 이미지 노출 시간(초). 기본 0. 첫 문제만 `>0`, 후속 문제는 `0` |
+| `choices` | array(string) | ✅ | 선택지 4개 |
+
+---
+
+### 10. 이모지 사람 찾기 `emoji_find`
+
+참가자마다 화면에 **이모지 세트(3개)** 와 **본인의 5자리 코드**가 표시됩니다.  
+같은 세트는 **2~3명**이 공유 — 제한시간 안에 같은 세트를 가진 다른 사람을 찾아 그 사람의 코드를 입력하면 정답.  
+**틀려도 시간 내 재시도 가능**(정답을 맞히면 잠금).
+
+```json
+{
+  "roundNumber": 10,
+  "theme": "이모지 사람 찾기",
+  "gameMode": "emoji_find",
+  "questions": [
+    {
+      "content": "같은 이모지 세트를 가진 사람을 찾아 그 사람의 코드를 입력하세요!",
+      "emojiPool": ["🐶", "🐱", "🦁", "🐰", "🐻", "🦊", "🚗", "🚀", "🏠", "🌳", "⚽", "🎸", "🍎", "🌙", "⭐", "🍩"],
+      "setSize": 3,
+      "groupSize": 2,
+      "correctAnswer": "__emoji_find__",
+      "timeLimit": 60,
+      "maxScore": 1000
+    }
+  ]
+}
+```
+
+| 추가 필드 | 타입 | 필수 | 기본값 | 설명 |
+|---------|------|------|--------|------|
+| `emojiPool` | array(string) | ✅ | — | 세트를 구성할 이모지 풀 (넉넉히, 12개 이상 권장) |
+| `setSize` | number | — | `3` | 한 사람에게 보여줄 이모지 개수 |
+| `groupSize` | number | — | `2` | 같은 세트를 공유하는 인원(2~3). 홀수 잔여 1명은 직전 그룹에 합쳐 3명이 됩니다 |
+| `correctAnswer` | string | ✅ | — | 반드시 `"__emoji_find__"` 고정값 |
+
+> 권장 인원 4명 이상(최소 2명). 인원이 적으면 매칭이 어려울 수 있습니다.  
+> 코드는 참가자별로 자동 생성되며, 서버가 같은 그룹 여부로 정답을 판정합니다.
+
+---
+
+### 11. 장문 타이핑 `long_typing`
+
+성경 말씀 같은 **긴 문장을 큰 화면에 띄우고**, 참가자가 따라 입력합니다.  
+**원문은 프로젝터에만** 표시되고(휴대폰엔 입력창만), 원문과의 **일치도(정확도) + 속도**로 채점합니다.
+
+```json
+{
+  "roundNumber": 11,
+  "theme": "말씀 타이핑",
+  "gameMode": "long_typing",
+  "questions": [
+    {
+      "content": "큰 화면의 말씀을 정확하게 따라 입력하세요",
+      "correctAnswer": "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
+      "timeLimit": 90,
+      "maxScore": 1000,
+      "passThreshold": 0.9
+    }
+  ]
+}
+```
+
+| 추가 필드 | 타입 | 필수 | 기본값 | 설명 |
+|---------|------|------|--------|------|
+| `correctAnswer` | string | ✅ | — | 따라 칠 원문 전체 (프로젝터에 표시됨) |
+| `passThreshold` | number | — | `0.9` | "정답"으로 집계할 최소 일치도 (점수는 일치도 비례 부분점수) |
+
+> 점수: `maxScore × 정확도 × (0.7 + 0.3 × 속도)`. 정확하고 빠를수록 고득점, 정확도 0이면 0점(감점 없음).  
+> 긴 글은 `timeLimit`을 넉넉히(60~120초) 주세요.
+
+---
+
 ## 완성 예시: 전체 게임 세트
 
 7개 모드를 모두 활용한 실전 세트 예시:
@@ -487,8 +634,11 @@ newcreation/
 | `choices`를 3개 또는 5개 입력 | 반드시 4개 |
 | `correctAnswer`가 `choices`에 없음 | `choices` 중 하나와 정확히 일치해야 함 |
 | `reaction`에 다른 `correctAnswer` 입력 | 반드시 `"__reaction__"` |
+| `emoji_find`에 다른 `correctAnswer` 입력 | 반드시 `"__emoji_find__"` |
 | `consonantHint`에 글자 포함 | 자음(초성)만 입력: `ㅅㅇ` (서울) |
 | 이미지 파일 경로 누락 | `/media/` 폴더에 파일 있는지 확인 후 파일명만 입력 |
+| `image_memory` 후속 문제에 이미지 재노출 | 첫 문제만 `imageUrl`+`memorizeDuration>0`, 이후 문제는 `memorizeDuration: 0` |
+| `emoji_find`의 `emojiPool` 너무 적음 | 그룹마다 다른 세트가 나오도록 넉넉히(12개 이상) |
 | `roundNumber` 중복 | 각 라운드마다 고유한 번호 |
 
 ---
