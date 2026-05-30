@@ -64,6 +64,42 @@ export const MODES = [
     tip: '신호 전에 미리 누르면 안 됩니다. 노란 화면이 뜨는 순간 누르세요!',
     how: '준비 → 노란 화면 등장 → 즉시 탭!',
   },
+  {
+    icon: '🖼️',
+    title: '이미지 객관식',
+    sub: 'Image Multiple Choice',
+    color: 'from-sky-100 to-blue-50 border-sky-200',
+    desc: '이미지를 보고 4개의 보기 중 정답을 고르세요.',
+    tip: '이미지는 화면과 휴대폰 모두에 표시됩니다.',
+    how: '① ② ③ ④ 버튼 중 하나를 탭하면 즉시 제출!',
+  },
+  {
+    icon: '🧠',
+    title: '이미지 기억력',
+    sub: 'Image Memory',
+    color: 'from-fuchsia-100 to-purple-50 border-fuchsia-200',
+    desc: '화면의 이미지를 잠깐 보여준 뒤 숨기고, 그 이미지에 대한 문제를 연속으로 냅니다.',
+    tip: '이미지가 보이는 동안 최대한 자세히 기억하세요! 한 이미지에 여러 문제가 나올 수 있어요.',
+    how: '암기 시간 → 이미지 사라짐 → 객관식으로 답변.',
+  },
+  {
+    icon: '🔎',
+    title: '이모지 사람 찾기',
+    sub: 'Emoji Find',
+    color: 'from-orange-100 to-amber-50 border-orange-200',
+    desc: '내 화면의 이모지 세트와 같은 세트를 가진 사람을 찾아 그 사람의 코드를 입력하세요.',
+    tip: '같은 세트는 2~3명! 틀려도 시간 안에 다시 시도할 수 있어요.',
+    how: '주변 사람과 이모지 비교 → 같은 사람의 5자리 코드 입력 → 제출.',
+  },
+  {
+    icon: '⌨️',
+    title: '장문 타이핑',
+    sub: 'Long Typing',
+    color: 'from-emerald-100 to-teal-50 border-emerald-200',
+    desc: '큰 화면에 표시된 긴 문장을 똑같이 따라 입력하세요.',
+    tip: '정확하고 빠르게 칠수록 고득점! 원문은 큰 화면에만 표시됩니다.',
+    how: '화면을 보며 입력창에 타이핑 → 제출하기.',
+  },
 ];
 
 // 게임 모드 안내 본문 (GuidePage 와 진행 중 모달에서 공용)
@@ -104,6 +140,8 @@ export default function GuideContent({ animate = true }) {
         <p className="text-slate-500 text-xs">빨리 정답을 맞힐수록 높은 점수 (최대 1000점)</p>
         <p className="text-slate-500 text-xs">오답 제출 시 페널티 점수 차감</p>
         <p className="text-slate-500 text-xs mt-2">반응게임은 빠른 순서대로 점수 차등 지급</p>
+        <p className="text-slate-500 text-xs">장문 타이핑은 원문과 일치할수록 부분 점수 + 속도 보너스</p>
+        <p className="text-slate-500 text-xs">이모지 찾기는 정답을 맞힐 때까지 재시도 가능</p>
       </div>
     </>
   );

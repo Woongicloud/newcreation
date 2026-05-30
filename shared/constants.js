@@ -6,6 +6,10 @@ export const GAME_MODES = {
   IMAGE_QUIZ: 'image_quiz',
   AUDIO_QUIZ: 'audio_quiz',
   REACTION: 'reaction',
+  IMAGE_MULTIPLE_CHOICE: 'image_multiple_choice',
+  IMAGE_MEMORY: 'image_memory',
+  EMOJI_FIND: 'emoji_find',
+  LONG_TYPING: 'long_typing',
 };
 
 export const SOCKET_EVENTS = {
@@ -23,6 +27,7 @@ export const SOCKET_EVENTS = {
   ADMIN_END_GAME: 'admin:end_game',
   ADMIN_LIST_ROOMS: 'admin:list_rooms',
   ADMIN_TERMINATE_ROOM: 'admin:terminate_room',
+  ADMIN_SHOW_AWARD: 'admin:show_award',
 
   // Server → Client
   GAME_PLAYER_JOINED: 'game:player_joined',
@@ -33,9 +38,12 @@ export const SOCKET_EVENTS = {
   GAME_ROUND_END: 'game:round_end',
   GAME_REACTION_START: 'game:reaction_start',
   GAME_REACTION_END: 'game:reaction_end',
+  GAME_EMOJI_ASSIGN: 'game:emoji_assign',
+  GAME_MEMORY_END: 'game:memory_end',
   GAME_STATE_SYNC: 'game:state_sync',
   GAME_SESSION_ENDED: 'game:session_ended',
   GAME_AWARDS_DATA: 'game:awards_data',
+  GAME_SHOW_AWARD: 'game:show_award',
   CHAT_MESSAGE: 'chat:message',
   ERROR: 'error',
 

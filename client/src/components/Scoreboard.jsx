@@ -42,7 +42,7 @@ export default function Scoreboard({ leaderboard, isFinal }) {
               </p>
               <p className="text-gray-400 text-sm">{player.className}</p>
             </div>
-            <p className="text-yellow-400 font-black font-mono" style={{ fontSize: '2.2vw' }}>
+            <p className="font-black font-mono" style={{ fontSize: '2.2vw', color: '#ADFF2F' }}>
               {player.score.toLocaleString()}
             </p>
           </motion.div>

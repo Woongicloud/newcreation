@@ -15,6 +15,10 @@ import WordGuess from '../components/game-modes/WordGuess.jsx';
 import ImageQuiz from '../components/game-modes/ImageQuiz.jsx';
 import AudioQuiz from '../components/game-modes/AudioQuiz.jsx';
 import ReactionGame from '../components/game-modes/ReactionGame.jsx';
+import ImageMultipleChoice from '../components/game-modes/ImageMultipleChoice.jsx';
+import ImageMemory from '../components/game-modes/ImageMemory.jsx';
+import EmojiFind from '../components/game-modes/EmojiFind.jsx';
+import LongTyping from '../components/game-modes/LongTyping.jsx';
 
 const LS_KEYS = ['playerId', 'roomCode', 'playerName', 'playerClass'];
 
@@ -34,6 +38,9 @@ export default function GamePage() {
   const [phase, setPhase] = useState('game'); // game | roundEnd
   const [reconnecting, setReconnecting] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [memorizePhase, setMemorizePhase] = useState(false); // 기억력 모드 암기 단계
+  const [emojiWrongNonce, setEmojiWrongNonce] = useState(0);  // 이모지 오답 흔들림 트리거
+  const [emojiAssign, setEmojiAssign] = useState(null);       // 이모지 내 세트/코드 (GamePage 에서 수신해 레이스 방지)
 
   useEffect(() => {
     if (!player) {
@@ -47,7 +54,7 @@ export default function GamePage() {
       const doRejoin = () => socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId: savedId, roomCode: savedRoom });
       if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
 
-      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp, hasSubmitted: hs }) => {
+      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp, hasSubmitted: hs, memorizeActive: ma, emojiAssign: ea }) => {
         const myPlayer = sp?.find(p => p.id === savedId)
           || { id: savedId, name: localStorage.getItem('playerName') || '', className: localStorage.getItem('playerClass') || '', score: 0 };
         setPlayer(myPlayer);
@@ -58,6 +65,8 @@ export default function GamePage() {
           setCurrentQuestion({ ...q });
           setTimeRemaining(tr || 0);
           setPhase('game');
+          setMemorizePhase(!!ma);
+          setEmojiAssign(ea || null);
           // 이미 제출한 문제면 "제출 완료" 상태 복원 (새로고침 재득점 방지)
           if (hs) setHasSubmitted(true);
         }
@@ -88,11 +97,13 @@ export default function GamePage() {
       }
     };
 
-    const onStateSync = ({ currentQuestion: q, timeRemaining: tr, hasSubmitted: hs }) => {
+    const onStateSync = ({ currentQuestion: q, timeRemaining: tr, hasSubmitted: hs, memorizeActive: ma, emojiAssign: ea }) => {
       if (q) {
         setCurrentQuestion({ ...q });
         setTimeRemaining(tr || 0);
         setPhase('game');
+        setMemorizePhase(!!ma);
+        setEmojiAssign(ea || null);
         if (hs) setHasSubmitted(true);
       }
     };
@@ -103,15 +114,33 @@ export default function GamePage() {
       setCorrectAnswer(null);
       questionStartTime.current = Date.now();
       setPhase('game');
+      setEmojiWrongNonce(0);
+      setEmojiAssign(null); // 새 문제 — 이모지 배정 초기화 (이어서 GAME_EMOJI_ASSIGN 수신)
+      // 기억력 모드: 암기 단계면 답변 잠금(타이머는 암기 종료 후 시작)
+      const isMemorize = question.gameMode === GAME_MODES.IMAGE_MEMORY && (question.memorizeDuration ?? 0) > 0;
+      setMemorizePhase(isMemorize);
+    };
+
+    const onEmojiAssign = (data) => setEmojiAssign(data || null);
+
+    const onMemoryEnd = () => {
+      setMemorizePhase(false);
+      // 답변 시작 시점부터 응답시간 측정 (속도 점수 공정화)
+      questionStartTime.current = Date.now();
     };
 
     const onTimerTick = ({ remaining }) => setTimeRemaining(remaining);
 
-    const onShowResult = ({ playerId, isCorrect, scoreDelta, newScore }) => {
-      if (player && playerId === player.id) {
-        setLastResult({ isCorrect, scoreDelta });
-        updatePlayerScore(playerId, newScore);
+    const onShowResult = ({ playerId, isCorrect, scoreDelta, newScore, accuracy, lock, retry }) => {
+      if (!player || playerId !== player.id) return;
+      if (retry) {
+        // 이모지 사람 찾기 오답 — 모달 없이 재시도(흔들림) 안내
+        setEmojiWrongNonce((n) => n + 1);
+        return;
       }
+      setLastResult({ isCorrect, scoreDelta, accuracy });
+      updatePlayerScore(playerId, newScore);
+      if (lock) setHasSubmitted(true); // 이모지 정답 등 서버 확정 잠금
     };
 
     const onQuestionEnd = ({ correctAnswer: ans }) => {
@@ -131,6 +160,8 @@ export default function GamePage() {
     socket.on('connect', onReconnect);
     socket.on(SOCKET_EVENTS.GAME_STATE_SYNC, onStateSync);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
+    socket.on(SOCKET_EVENTS.GAME_MEMORY_END, onMemoryEnd);
+    socket.on(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, onEmojiAssign);
     socket.on(SOCKET_EVENTS.GAME_TIMER_TICK, onTimerTick);
     socket.on(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
@@ -141,6 +172,8 @@ export default function GamePage() {
       socket.off('connect', onReconnect);
       socket.off(SOCKET_EVENTS.GAME_STATE_SYNC, onStateSync);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
+      socket.off(SOCKET_EVENTS.GAME_MEMORY_END, onMemoryEnd);
+      socket.off(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, onEmojiAssign);
       socket.off(SOCKET_EVENTS.GAME_TIMER_TICK, onTimerTick);
       socket.off(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
@@ -164,6 +197,17 @@ export default function GamePage() {
     if (hasSubmitted || !currentQuestion) return;
     socket.emit(SOCKET_EVENTS.PLAYER_REACTION, { reactionTimeMs });
     setHasSubmitted();
+  }
+
+  // 이모지 사람 찾기: 낙관적 잠금 없이 제출 (서버가 정답 확인 시 lock 으로 잠금)
+  function handleEmojiSubmit(code) {
+    if (hasSubmitted || !currentQuestion) return;
+    const responseTimeMs = Date.now() - (questionStartTime.current || Date.now());
+    socket.emit(SOCKET_EVENTS.PLAYER_SUBMIT, {
+      questionId: currentQuestion.id,
+      answer: code,
+      responseTimeMs,
+    });
   }
 
   if (reconnecting) {
@@ -244,10 +288,12 @@ export default function GamePage() {
       <div className="flex-1 flex flex-col overflow-y-auto">
         {currentQuestion ? (
           <div className="flex flex-col gap-4 px-4 pt-4 pb-2">
-            {/* 타이머 (중앙) */}
-            <div className="flex justify-center">
-              <Timer remaining={timeRemaining} total={currentQuestion.timeLimit} />
-            </div>
+            {/* 타이머 (중앙) — 기억력 암기 단계엔 숨김 */}
+            {!memorizePhase && (
+              <div className="flex justify-center">
+                <Timer remaining={timeRemaining} total={currentQuestion.timeLimit} />
+              </div>
+            )}
 
             {/* 게임 모드 컴포넌트 */}
             <div className="relative">
@@ -307,8 +353,46 @@ export default function GamePage() {
               {gameMode === GAME_MODES.REACTION && (
                 <ReactionGame key={currentQuestion.id} hasSubmitted={hasSubmitted} onReact={handleReact} />
               )}
+              {gameMode === GAME_MODES.IMAGE_MULTIPLE_CHOICE && (
+                <ImageMultipleChoice
+                  key={currentQuestion.id}
+                  question={currentQuestion}
+                  onSubmit={handleSubmit}
+                  hasSubmitted={hasSubmitted}
+                  correctAnswer={correctAnswer}
+                />
+              )}
+              {gameMode === GAME_MODES.IMAGE_MEMORY && (
+                <ImageMemory
+                  key={currentQuestion.id}
+                  question={currentQuestion}
+                  onSubmit={handleSubmit}
+                  hasSubmitted={hasSubmitted}
+                  correctAnswer={correctAnswer}
+                  memorizePhase={memorizePhase}
+                />
+              )}
+              {gameMode === GAME_MODES.EMOJI_FIND && (
+                <EmojiFind
+                  key={currentQuestion.id}
+                  assign={emojiAssign}
+                  onSubmitCode={handleEmojiSubmit}
+                  hasSubmitted={hasSubmitted}
+                  wrongNonce={emojiWrongNonce}
+                />
+              )}
+              {gameMode === GAME_MODES.LONG_TYPING && (
+                <LongTyping
+                  key={currentQuestion.id}
+                  onSubmit={handleSubmit}
+                  hasSubmitted={hasSubmitted}
+                  lastResult={lastResult}
+                />
+              )}
 
-              {lastResult && <ResultModal result={lastResult} />}
+              {/* 이모지 사람 찾기는 정답 전까지 모달 숨김(오답 흔들림으로 대체) */}
+              {lastResult && gameMode !== GAME_MODES.EMOJI_FIND && <ResultModal result={lastResult} />}
+              {lastResult && gameMode === GAME_MODES.EMOJI_FIND && lastResult.isCorrect && <ResultModal result={lastResult} />}
             </div>
           </div>
         ) : (
