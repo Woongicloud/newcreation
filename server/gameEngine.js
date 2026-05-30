@@ -321,10 +321,6 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
   const player = session.players.get(socketId);
   if (!player) return;
 
-  // playerId 기준 중복 제출 차단 — 새로고침으로 socketId가 바뀌어도 재득점 불가
-  if (session.submittedAnswers.has(player.id)) return;
-  session.submittedAnswers.add(player.id);
-
   const round = session.rounds[session.currentRound];
   const question = round?.questions[session.currentQuestionIndex];
   if (!question || question.id !== questionId) return;

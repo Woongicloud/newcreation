@@ -21,9 +21,6 @@ import {
   removePlayerFromSession,
   listSessions,
   terminateSession,
-  removePlayerFromSession,
-  listSessions,
-  terminateSession,
 } from './gameEngine.js';
 import { handleChat } from './chatHandler.js';
 
@@ -203,6 +200,26 @@ io.on('connection', (socket) => {
   socket.on(SOCKET_EVENTS.ADMIN_END_GAME, ({ password, roomCode }) => {
     if (!verifyAdmin(password)) return emitError(socket, '관리자 인증 실패');
     endGame(roomCode, io);
+  });
+
+  // ── Admin: 활성 방 목록 (모니터링) ────────────────────────
+  socket.on(SOCKET_EVENTS.ADMIN_LIST_ROOMS, ({ password }) => {
+    if (!verifyAdmin(password)) return emitError(socket, '관리자 인증 실패');
+    socket.emit(SOCKET_EVENTS.ADMIN_ROOMS_DATA, listSessions());
+  });
+
+  // ── Admin: 방 강제 종료 (유기된 방 정리) ──────────────────
+  socket.on(SOCKET_EVENTS.ADMIN_TERMINATE_ROOM, ({ password, roomCode }) => {
+    if (!verifyAdmin(password)) return emitError(socket, '관리자 인증 실패');
+    terminateSession(roomCode, io);
+    socket.emit(SOCKET_EVENTS.ADMIN_ROOMS_DATA, listSessions());
+  });
+
+  // ── Admin: 시상 화면을 해당 방 Display 로 송출 ────────────
+  socket.on(SOCKET_EVENTS.ADMIN_SHOW_AWARD, ({ password, roomCode, award }) => {
+    if (!verifyAdmin(password)) return emitError(socket, '관리자 인증 실패');
+    if (!roomCode) return;
+    io.to(roomCode).emit(SOCKET_EVENTS.GAME_SHOW_AWARD, award || { type: 'clear' });
   });
 
   // ── 연결 해제 ────────────────────────────────────────────
