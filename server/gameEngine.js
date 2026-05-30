@@ -1,5 +1,6 @@
-import { SOCKET_EVENTS, GAME_STATUS } from '../shared/constants.js';
-import { calculateScore } from './scoringEngine.js';
+import { SOCKET_EVENTS, GAME_STATUS, GAME_MODES } from '../shared/constants.js';
+import { calculateScore, normalizeAnswer, textSimilarity, computeTypingScore } from './scoringEngine.js';
+import { buildEmojiAssignments } from './emojiAssign.js';
 import supabase from './supabase.js';
 
 // O, I, 0, 1 제외로 혼동 방지
@@ -79,6 +80,8 @@ async function createSession(io) {
     questionStartTime: null,
     submittedAnswers: new Set(), // playerId 기준 (새로고침 재득점 방지)
     reactionResults: [],
+    memorizeActive: false,       // 기억력 모드 암기 단계 중 제출 차단
+    emoji: null,                 // 이모지 사람 찾기 배정 { assignments, codeToPlayerId, solved }
     awards: null,
   };
 
@@ -199,6 +202,18 @@ function startGame(roomCode, io) {
   broadcastQuestion(roomCode, io);
 }
 
+// 답안 제한시간 카운트다운 시작 (기억력 모드는 암기 단계 후 호출)
+function startAnswerTimer(roomCode, io, question) {
+  const session = sessions[roomCode];
+  if (!session) return;
+  let remaining = question.timeLimit;
+  session.timer = setInterval(() => {
+    remaining--;
+    io.to(roomCode).emit(SOCKET_EVENTS.GAME_TIMER_TICK, { remaining });
+    if (remaining <= 0) endQuestion(roomCode, io);
+  }, 1000);
+}
+
 function broadcastQuestion(roomCode, io) {
   const session = sessions[roomCode];
   if (!session) return;
@@ -213,6 +228,10 @@ function broadcastQuestion(roomCode, io) {
   session.reactionResults = [];
   session.questionStartTime = Date.now();
   session.questionEnded = false;
+  session.memorizeActive = false;
+  session.emoji = null;
+
+  const memorizeDuration = question.memorizeDuration ?? 0;
 
   const safeQuestion = {
     id: question.id,
@@ -227,6 +246,9 @@ function broadcastQuestion(roomCode, io) {
     questionNumber: question.questionNumber,
     roundNumber: round.roundNumber,
     theme: round.theme,
+    memorizeDuration,
+    // 장문 타이핑은 원문(정답)을 Display 에 표시해야 하므로 전달
+    targetText: round.gameMode === GAME_MODES.LONG_TYPING ? question.correctAnswer : undefined,
   };
 
   io.to(roomCode).emit(SOCKET_EVENTS.GAME_QUESTION_START, {
@@ -236,8 +258,30 @@ function broadcastQuestion(roomCode, io) {
     totalQuestions: round.questions.length,
   });
 
+  // 이모지 사람 찾기: 참가자별 개인 세트 + 코드 배정 후 소켓별 전송
+  if (round.gameMode === GAME_MODES.EMOJI_FIND) {
+    const onlineIds = Array.from(session.players.values())
+      .filter((p) => p.isOnline !== false)
+      .map((p) => p.id);
+    const { assignments, codeToPlayerId } = buildEmojiAssignments(onlineIds, {
+      emojiPool: question.emojiPool,
+      setSize: question.setSize,
+      groupSize: question.groupSize,
+    });
+    session.emoji = { assignments, codeToPlayerId, solved: new Set() };
+    for (const player of session.players.values()) {
+      const a = assignments.get(player.id);
+      if (a) {
+        io.to(player.socketId).emit(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, {
+          emojiSet: a.emojiSet,
+          code: a.code,
+        });
+      }
+    }
+  }
+
   // 반응게임: 랜덤 딜레이 후 신호
-  if (round.gameMode === 'reaction') {
+  if (round.gameMode === GAME_MODES.REACTION) {
     const delay = 1000 + Math.random() * 3000;
     session.reactionSignalTime = Date.now() + delay;
     setTimeout(() => {
@@ -248,12 +292,25 @@ function broadcastQuestion(roomCode, io) {
     }, delay);
   }
 
-  let remaining = question.timeLimit;
-  session.timer = setInterval(() => {
-    remaining--;
-    io.to(roomCode).emit(SOCKET_EVENTS.GAME_TIMER_TICK, { remaining });
-    if (remaining <= 0) endQuestion(roomCode, io);
-  }, 1000);
+  // 기억력 모드: 이미지 암기 단계(타이머 보류) → memorizeDuration 후 문제 공개 + 답안 타이머
+  if (round.gameMode === GAME_MODES.IMAGE_MEMORY && memorizeDuration > 0) {
+    session.memorizeActive = true;
+    const startedQuestionId = question.id;
+    setTimeout(() => {
+      const s = sessions[roomCode];
+      if (!s || s.status !== GAME_STATUS.PLAYING || s.questionEnded) return;
+      const curRound = s.rounds[s.currentRound];
+      const curQ = curRound?.questions[s.currentQuestionIndex];
+      if (!curQ || curQ.id !== startedQuestionId) return; // 그 사이 다음 문제로 넘어갔으면 무시
+      s.memorizeActive = false;
+      s.questionStartTime = Date.now();
+      io.to(roomCode).emit(SOCKET_EVENTS.GAME_MEMORY_END, {});
+      startAnswerTimer(roomCode, io, question);
+    }, memorizeDuration * 1000);
+    return;
+  }
+
+  startAnswerTimer(roomCode, io, question);
 }
 
 async function submitAnswer(roomCode, socketId, { questionId, answer, responseTimeMs }, io) {
@@ -263,23 +320,40 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
   const player = session.players.get(socketId);
   if (!player) return;
 
-  // playerId 기준 중복 제출 차단 — 새로고침으로 socketId가 바뀌어도 재득점 불가
-  if (session.submittedAnswers.has(player.id)) return;
-  session.submittedAnswers.add(player.id);
-
   const round = session.rounds[session.currentRound];
   const question = round?.questions[session.currentQuestionIndex];
   if (!question || question.id !== questionId) return;
 
-  const { normalizeAnswer } = await import('./scoringEngine.js');
-  const isCorrect = normalizeAnswer(answer) === normalizeAnswer(question.correctAnswer);
-  const scoreDelta = calculateScore(
-    isCorrect,
-    responseTimeMs,
-    question.timeLimit * 1000,
-    question.maxScore,
-    question.penalty
-  );
+  // 기억력 모드 암기 단계 중에는 제출 무시
+  if (session.memorizeActive) return;
+
+  // 이모지 사람 찾기: 정답 맞출 때까지 재시도 — 자체 로직으로 분기
+  if (round.gameMode === GAME_MODES.EMOJI_FIND) {
+    return handleEmojiSubmit(roomCode, socketId, player, answer, responseTimeMs, io);
+  }
+
+  // playerId 기준 중복 제출 차단 — 새로고침으로 socketId가 바뀌어도 재득점 불가
+  if (session.submittedAnswers.has(player.id)) return;
+  session.submittedAnswers.add(player.id);
+
+  let isCorrect;
+  let scoreDelta;
+  let accuracy;
+  if (round.gameMode === GAME_MODES.LONG_TYPING) {
+    // 장문 타이핑: 원문 일치도(부분 점수) + 속도 보너스
+    accuracy = textSimilarity(answer, question.correctAnswer);
+    isCorrect = accuracy >= (question.passThreshold ?? 0.9);
+    scoreDelta = computeTypingScore(accuracy, responseTimeMs, question.timeLimit * 1000, question.maxScore);
+  } else {
+    isCorrect = normalizeAnswer(answer) === normalizeAnswer(question.correctAnswer);
+    scoreDelta = calculateScore(
+      isCorrect,
+      responseTimeMs,
+      question.timeLimit * 1000,
+      question.maxScore,
+      question.penalty
+    );
+  }
 
   player.score += scoreDelta;
   player.totalResponseTimeMs += responseTimeMs;
@@ -301,6 +375,7 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
     isCorrect,
     scoreDelta,
     newScore: player.score,
+    accuracy,
   });
 
   // Display에 제출 카운트 알림 (정답 미포함)
@@ -311,6 +386,77 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
 
   // 온라인 인원이 모두 제출하면 즉시 종료 (끊긴/유령 유저는 제외)
   if (session.submittedAnswers.size >= onlineCount(session)) {
+    endQuestion(roomCode, io);
+  }
+}
+
+// 이모지 사람 찾기 제출 — 오답은 재시도, 정답만 점수 확정 + 잠금
+async function handleEmojiSubmit(roomCode, socketId, player, answer, responseTimeMs, io) {
+  const session = sessions[roomCode];
+  if (!session || !session.emoji) return;
+
+  const round = session.rounds[session.currentRound];
+  const question = round?.questions[session.currentQuestionIndex];
+  if (!question) return;
+
+  const { assignments, codeToPlayerId, solved } = session.emoji;
+  if (solved.has(player.id)) return; // 이미 정답 — 잠금
+
+  const myAssign = assignments.get(player.id);
+  const code = String(answer || '').trim();
+  const targetId = codeToPlayerId.get(code);
+  const targetAssign = targetId ? assignments.get(targetId) : null;
+
+  const isCorrect = !!(
+    myAssign &&
+    targetAssign &&
+    targetId !== player.id &&
+    targetAssign.groupId === myAssign.groupId
+  );
+
+  if (!isCorrect) {
+    // 오답 — 감점·잠금 없이 재시도 허용
+    io.to(socketId).emit(SOCKET_EVENTS.GAME_SHOW_RESULT, {
+      playerId: player.id,
+      isCorrect: false,
+      scoreDelta: 0,
+      newScore: player.score,
+      retry: true,
+    });
+    return;
+  }
+
+  solved.add(player.id);
+  const scoreDelta = calculateScore(true, responseTimeMs, question.timeLimit * 1000, question.maxScore, question.penalty);
+  player.score += scoreDelta;
+  player.totalResponseTimeMs += responseTimeMs;
+  player.submitCount += 1;
+
+  await supabase.from('answers').insert({
+    question_id: question.id,
+    player_id: player.id,
+    answer: code,
+    is_correct: true,
+    response_time_ms: responseTimeMs,
+    score_delta: scoreDelta,
+  });
+  await supabase.from('players').update({ score: player.score }).eq('id', player.id);
+
+  io.to(socketId).emit(SOCKET_EVENTS.GAME_SHOW_RESULT, {
+    playerId: player.id,
+    isCorrect: true,
+    scoreDelta,
+    newScore: player.score,
+    lock: true,
+  });
+
+  // Display 진행률 (정답자 수)
+  io.to(roomCode).emit(SOCKET_EVENTS.GAME_SHOW_RESULT, {
+    submittedCount: solved.size,
+    totalPlayers: onlineCount(session),
+  });
+
+  if (solved.size >= onlineCount(session)) {
     endQuestion(roomCode, io);
   }
 }
@@ -549,6 +695,17 @@ function rejoinSession(roomCode, socketId, playerId, io) {
 
       const round = session.rounds[session.currentRound];
       const question = round?.questions[session.currentQuestionIndex];
+
+      // 이모지 사람 찾기 진행 중이면 개인 배정(세트+코드) 재전송
+      if (round?.gameMode === GAME_MODES.EMOJI_FIND && session.emoji) {
+        const a = session.emoji.assignments.get(playerId);
+        if (a) io.to(socketId).emit(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, { emojiSet: a.emojiSet, code: a.code });
+      }
+
+      const hasSubmitted = round?.gameMode === GAME_MODES.EMOJI_FIND
+        ? !!session.emoji?.solved?.has(playerId)
+        : session.submittedAnswers.has(playerId);
+
       return {
         status: session.status,
         currentQuestion: question ? {
@@ -559,8 +716,9 @@ function rejoinSession(roomCode, socketId, playerId, io) {
         } : null,
         players: Array.from(session.players.values()),
         timeRemaining: session.timer ? null : 0,
+        memorizeActive: !!session.memorizeActive,
         // 이미 이 문제에 제출했는지 — 새로고침 시 "제출 완료" 상태 복원용
-        hasSubmitted: session.submittedAnswers.has(playerId),
+        hasSubmitted,
       };
     }
   }

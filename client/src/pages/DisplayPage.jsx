@@ -53,6 +53,7 @@ export default function DisplayPage() {
   const [joinedRoomCode, setJoinedRoomCode] = useState('');
   const [joined, setJoined] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const [memorizeCount, setMemorizeCount] = useState(0);
   const audioRef = useRef(null);
 
   function doJoin(code) {
@@ -97,7 +98,10 @@ export default function DisplayPage() {
       setTimeRemaining(timeLimit);
       setCorrectAnswer(null);
       setSubmittedCount(0);
-      setPhase(q.gameMode === GAME_MODES.REACTION ? 'reaction_wait' : 'question');
+      const isMemorize = q.gameMode === GAME_MODES.IMAGE_MEMORY && (q.memorizeDuration ?? 0) > 0;
+      setPhase(
+        q.gameMode === GAME_MODES.REACTION ? 'reaction_wait' : isMemorize ? 'memorize' : 'question'
+      );
       // 오디오 퀴즈: Display에서 자동 재생
       if (q.audioUrl) {
         if (audioRef.current) {
@@ -108,6 +112,10 @@ export default function DisplayPage() {
         audioRef.current.pause();
         audioRef.current.src = '';
       }
+    });
+
+    socket.on(SOCKET_EVENTS.GAME_MEMORY_END, () => {
+      setPhase('question');
     });
 
     socket.on(SOCKET_EVENTS.GAME_TIMER_TICK, ({ remaining }) => {
@@ -142,6 +150,7 @@ export default function DisplayPage() {
     return () => {
       socket.off(SOCKET_EVENTS.GAME_PLAYER_JOINED);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_START);
+      socket.off(SOCKET_EVENTS.GAME_MEMORY_END);
       socket.off(SOCKET_EVENTS.GAME_TIMER_TICK);
       socket.off(SOCKET_EVENTS.GAME_SHOW_RESULT);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_END);
@@ -150,6 +159,14 @@ export default function DisplayPage() {
       socket.off(SOCKET_EVENTS.GAME_ROUND_END);
     };
   }, [joined]);
+
+  // 기억력 모드 암기 단계 로컬 카운트다운 (Display 전용 — 답안 타이머와 분리)
+  useEffect(() => {
+    if (phase !== 'memorize') return;
+    setMemorizeCount(question?.memorizeDuration || 0);
+    const t = setInterval(() => setMemorizeCount((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [phase, question?.id]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -276,8 +293,8 @@ export default function DisplayPage() {
                 </span>
               </div>
 
-              {/* 이미지 (image_quiz) */}
-              {question.imageUrl && (
+              {/* 이미지 (image_quiz / image_multiple_choice) — 기억력 모드는 암기 단계에서만 노출 */}
+              {question.imageUrl && question.gameMode !== GAME_MODES.IMAGE_MEMORY && (
                 <img
                   src={question.imageUrl}
                   alt=""
@@ -292,10 +309,34 @@ export default function DisplayPage() {
                 </p>
               )}
 
-              {/* 문제 텍스트 */}
-              <p className="text-white font-bold leading-snug" style={{ fontSize: '3.3vw' }}>
+              {/* 문제 텍스트 (장문 타이핑은 안내문이므로 작게) */}
+              <p
+                className="text-white font-bold leading-snug"
+                style={{ fontSize: question.gameMode === GAME_MODES.LONG_TYPING ? '2vw' : '3.3vw' }}
+              >
                 {question.content}
               </p>
+
+              {/* 장문 타이핑: 따라 칠 원문 (프로젝터에만 표시) */}
+              {question.gameMode === GAME_MODES.LONG_TYPING && question.targetText && (
+                <div className="bg-white/5 border-l-4 border-purple-400 rounded-r-xl px-[2vw] py-[1.5vw] max-h-[60vh] overflow-hidden">
+                  <p className="text-white font-bold leading-relaxed whitespace-pre-wrap" style={{ fontSize: '2.4vw' }}>
+                    {question.targetText}
+                  </p>
+                </div>
+              )}
+
+              {/* 이모지 사람 찾기: 안내 (개인 세트/코드는 각자 휴대폰에) */}
+              {question.gameMode === GAME_MODES.EMOJI_FIND && (
+                <div className="flex flex-col gap-[0.8vw] mt-[0.5vw]">
+                  <p className="text-yellow-300 font-bold" style={{ fontSize: '2vw' }}>
+                    📱 휴대폰에서 내 이모지 세트와 코드를 확인하세요
+                  </p>
+                  <p className="text-gray-300" style={{ fontSize: '1.6vw' }}>
+                    같은 세트를 가진 사람을 찾아 그 사람의 코드를 입력!
+                  </p>
+                </div>
+              )}
 
               {/* 객관식 선택지 */}
               {question.choices?.length > 0 && (
@@ -315,8 +356,9 @@ export default function DisplayPage() {
                 </div>
               )}
 
-              {/* 정답 공개 */}
-              {phase === 'result' && correctAnswer && !question.choices?.length && (
+              {/* 정답 공개 — sentinel/장문 모드는 제외 (이모지/반응/장문은 텍스트 정답 미표시) */}
+              {phase === 'result' && correctAnswer && !question.choices?.length &&
+                ![GAME_MODES.EMOJI_FIND, GAME_MODES.LONG_TYPING, GAME_MODES.REACTION].includes(question.gameMode) && (
                 <AnswerReveal correctAnswer={correctAnswer} choices={question.choices} />
               )}
             </div>
@@ -361,6 +403,32 @@ export default function DisplayPage() {
                 </div>
                 <p className="text-center text-gray-400" style={{ fontSize: '1.2vw' }}>{submitPct}%</p>
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── 기억력 모드 암기 단계 ──────────────────────── */}
+        {phase === 'memorize' && question && (
+          <motion.div
+            key="memorize"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center w-full h-full gap-[2vw] bg-gray-900 px-[4vw]"
+          >
+            <p className="text-white font-black" style={{ fontSize: '3vw' }}>🧠 이미지를 기억하세요!</p>
+            {question.imageUrl && (
+              <img
+                src={question.imageUrl}
+                alt=""
+                className="max-h-[60vh] max-w-[80vw] object-contain rounded-2xl"
+              />
+            )}
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400" style={{ fontSize: '1.6vw' }}>남은 시간</span>
+              <span className="text-yellow-300 font-black tabular-nums" style={{ fontSize: '3vw' }}>
+                {memorizeCount}
+              </span>
             </div>
           </motion.div>
         )}
