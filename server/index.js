@@ -213,6 +213,7 @@ io.on('connection', (socket) => {
     if (!verifyAdmin(password)) return emitError(socket, '관리자 인증 실패');
     terminateSession(roomCode, io);
     socket.emit(SOCKET_EVENTS.ADMIN_ROOMS_DATA, listSessions());
+    console.log(`[Admin] Room terminated: ${roomCode}`);
   });
 
   // ── Admin: 시상 화면을 해당 방 Display 로 송출 ────────────

@@ -9,7 +9,7 @@ export default function ImageMultipleChoice({ question, onSubmit, hasSubmitted, 
           <img
             src={question.imageUrl}
             alt="퀴즈 이미지"
-            className="w-full max-h-52 object-contain"
+            className="w-full max-h-72 object-contain"
           />
         </div>
       )}
@@ -18,6 +18,7 @@ export default function ImageMultipleChoice({ question, onSubmit, hasSubmitted, 
         onSubmit={onSubmit}
         hasSubmitted={hasSubmitted}
         correctAnswer={correctAnswer}
+        compact
       />
     </div>
   );

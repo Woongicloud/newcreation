@@ -318,6 +318,9 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
   const session = sessions[roomCode];
   if (!session || session.status !== GAME_STATUS.PLAYING) return;
 
+  // 제한시간 종료 후 제출 차단
+  if (session.questionEnded) return;
+
   const player = session.players.get(socketId);
   if (!player) return;
 
@@ -328,7 +331,7 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
   // 기억력 모드 암기 단계 중에는 제출 무시
   if (session.memorizeActive) return;
 
-  // 이모지 사람 찾기: 정답 맞출 때까지 재시도 — 자체 로직으로 분기
+  // 이모지 사람 찾기: 정답 맞출 때까지 재시도 — 자체 로직으로 분기 (dedup 없이)
   if (round.gameMode === GAME_MODES.EMOJI_FIND) {
     return handleEmojiSubmit(roomCode, socketId, player, answer, responseTimeMs, io);
   }
@@ -395,6 +398,9 @@ async function submitAnswer(roomCode, socketId, { questionId, answer, responseTi
 async function handleEmojiSubmit(roomCode, socketId, player, answer, responseTimeMs, io) {
   const session = sessions[roomCode];
   if (!session || !session.emoji) return;
+
+  // 제한시간 종료 후 제출 차단
+  if (session.questionEnded) return;
 
   const round = session.rounds[session.currentRound];
   const question = round?.questions[session.currentQuestionIndex];

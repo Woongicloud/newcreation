@@ -558,49 +558,100 @@ export default function DisplayPage() {
             exit={{ opacity: 0 }}
             className="flex flex-col items-center justify-center w-full h-full gap-[2vw] px-[4vw]"
           >
-            <motion.p
-              initial={{ y: -30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="font-black"
-              style={{ fontSize: '4vw', color: KEY_GREEN }}
-            >
-              {award.title || '🏆 시상'}
-            </motion.p>
-            <motion.div
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', damping: 12, delay: 0.15 }}
-              className="rounded-[2vw] px-[6vw] py-[3vw] text-center shadow-2xl"
-              style={{ background: FRAME_GRADIENT }}
-            >
-              <p className="text-slate-900 font-black leading-tight" style={{ fontSize: '7vw' }}>
-                {award.name}
-              </p>
-              {award.className && (
-                <p className="text-slate-800 font-bold" style={{ fontSize: '2.4vw' }}>
-                  {award.className}
-                </p>
-              )}
-            </motion.div>
-            {award.detail && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-white font-bold"
-                style={{ fontSize: '2.4vw' }}
-              >
-                {award.detail}
-              </motion.p>
+            {award.type === 'classLeaderboard' ? (
+              /* 반별 순위 — 랭킹 리스트 */
+              <>
+                <motion.p
+                  initial={{ y: -30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="font-black"
+                  style={{ fontSize: '4vw', color: KEY_GREEN }}
+                >
+                  {award.title || '📊 반별 순위'}
+                </motion.p>
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="w-full max-w-[60vw] rounded-[2vw] overflow-hidden shadow-2xl"
+                  style={{ background: 'rgba(255,255,255,0.07)', border: `2px solid ${KEY_BLUE}44` }}
+                >
+                  {(award.classLeaderboard || []).map((cls, i) => (
+                    <motion.div
+                      key={cls.className}
+                      initial={{ x: -40, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.15 + i * 0.1 }}
+                      className="flex items-center gap-[2vw] px-[3vw] py-[1.2vw] border-b last:border-b-0"
+                      style={{ borderColor: `${KEY_BLUE}22` }}
+                    >
+                      <span
+                        className="font-black w-[3.5vw] text-center"
+                        style={{ fontSize: '2.8vw', color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : KEY_BLUE }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="flex-1 text-white font-bold" style={{ fontSize: '2.6vw' }}>
+                        {cls.className}
+                      </span>
+                      <span className="text-slate-400 font-normal" style={{ fontSize: '1.6vw' }}>
+                        {cls.count}명
+                      </span>
+                      <span className="font-black font-mono" style={{ fontSize: '2.8vw', color: KEY_GREEN }}>
+                        {cls.avg.toLocaleString()}점
+                      </span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </>
+            ) : (
+              /* 개인 시상 카드 */
+              <>
+                <motion.p
+                  initial={{ y: -30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="font-black"
+                  style={{ fontSize: '4vw', color: KEY_GREEN }}
+                >
+                  {award.title || '🏆 시상'}
+                </motion.p>
+                <motion.div
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', damping: 12, delay: 0.15 }}
+                  className="rounded-[2vw] px-[6vw] py-[3vw] text-center shadow-2xl"
+                  style={{ background: FRAME_GRADIENT }}
+                >
+                  <p className="text-slate-900 font-black leading-tight" style={{ fontSize: '7vw' }}>
+                    {award.name}
+                  </p>
+                  {award.className && (
+                    <p className="text-slate-800 font-bold" style={{ fontSize: '2.4vw' }}>
+                      {award.className}
+                    </p>
+                  )}
+                </motion.div>
+                {award.detail && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-white font-bold"
+                    style={{ fontSize: '2.4vw' }}
+                  >
+                    {award.detail}
+                  </motion.p>
+                )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  style={{ fontSize: '4vw' }}
+                >
+                  🎉🎊🎉
+                </motion.div>
+              </>
             )}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              style={{ fontSize: '4vw' }}
-            >
-              🎉🎊🎉
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

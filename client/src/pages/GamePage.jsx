@@ -183,7 +183,7 @@ export default function GamePage() {
   }, [player?.id]);
 
   function handleSubmit(answer) {
-    if (hasSubmitted || !currentQuestion) return;
+    if (hasSubmitted || !currentQuestion || timeRemaining <= 0) return;
     const responseTimeMs = Date.now() - (questionStartTime.current || Date.now());
     socket.emit(SOCKET_EVENTS.PLAYER_SUBMIT, {
       questionId: currentQuestion.id,
@@ -201,7 +201,7 @@ export default function GamePage() {
 
   // 이모지 사람 찾기: 낙관적 잠금 없이 제출 (서버가 정답 확인 시 lock 으로 잠금)
   function handleEmojiSubmit(code) {
-    if (hasSubmitted || !currentQuestion) return;
+    if (hasSubmitted || !currentQuestion || timeRemaining <= 0) return;
     const responseTimeMs = Date.now() - (questionStartTime.current || Date.now());
     socket.emit(SOCKET_EVENTS.PLAYER_SUBMIT, {
       questionId: currentQuestion.id,
@@ -387,6 +387,7 @@ export default function GamePage() {
                   onSubmit={handleSubmit}
                   hasSubmitted={hasSubmitted}
                   lastResult={lastResult}
+                  timeExpired={timeRemaining <= 0}
                 />
               )}
 

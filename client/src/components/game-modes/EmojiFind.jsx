@@ -27,23 +27,9 @@ export default function EmojiFind({ assign, onSubmitCode, hasSubmitted, wrongNon
     onSubmitCode(code);
   }
 
-  if (hasSubmitted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center gap-3 py-8 text-center"
-      >
-        <div className="text-6xl">🎉</div>
-        <p className="text-slate-800 text-2xl font-bold">찾았습니다!</p>
-        <p className="text-slate-500 text-sm">결과를 기다리는 중...</p>
-      </motion.div>
-    );
-  }
-
   return (
     <div className="w-full px-2 space-y-4">
-      {/* 내 이모지 세트 + 코드 */}
+      {/* 내 이모지 세트 + 코드 — 제출 후에도 항상 표시 */}
       <div className="bg-white/85 rounded-2xl p-5 text-center shadow-sm border border-slate-200">
         <p className="text-slate-500 text-xs mb-2">내 이모지 세트</p>
         <div className="flex justify-center gap-3 text-5xl">
@@ -57,36 +43,50 @@ export default function EmojiFind({ assign, onSubmitCode, hasSubmitted, wrongNon
         </p>
       </div>
 
-      <p className="text-center text-slate-600 text-sm leading-relaxed">
-        같은 이모지 세트를 가진 사람을 찾아<br />
-        그 사람의 <b className="text-purple-700">코드</b>를 입력하세요!
-      </p>
-
-      <motion.form
-        onSubmit={handleSubmit}
-        animate={shake ? { x: [0, -10, 10, -8, 8, 0] } : {}}
-        transition={{ duration: 0.4 }}
-        className="space-y-3"
-      >
-        <input
-          type="text"
-          inputMode="numeric"
-          value={text}
-          onChange={(e) => setText(e.target.value.replace(/\D/g, '').slice(0, 5))}
-          placeholder="상대방 5자리 코드"
-          className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-800 text-2xl
-                     text-center font-mono tracking-[0.3em] placeholder:text-slate-400 placeholder:text-base placeholder:tracking-normal
-                     focus:outline-none focus:border-purple-400 touch-target"
-        />
-        <button
-          type="submit"
-          disabled={!text.trim()}
-          className="w-full py-4 rounded-2xl bg-purple-600 text-white text-xl font-bold
-                     active:scale-95 transition-transform disabled:opacity-40 touch-target"
+      {hasSubmitted ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center gap-2 py-4 text-center"
         >
-          제출하기
-        </button>
-      </motion.form>
+          <div className="text-5xl">🎉</div>
+          <p className="text-slate-800 text-2xl font-bold">찾았습니다!</p>
+          <p className="text-slate-500 text-sm">결과를 기다리는 중...</p>
+        </motion.div>
+      ) : (
+        <>
+          <p className="text-center text-slate-600 text-sm leading-relaxed">
+            같은 이모지 세트를 가진 사람을 찾아<br />
+            그 사람의 <b className="text-purple-700">코드</b>를 입력하세요!
+          </p>
+
+          <motion.form
+            onSubmit={handleSubmit}
+            animate={shake ? { x: [0, -10, 10, -8, 8, 0] } : {}}
+            transition={{ duration: 0.4 }}
+            className="space-y-3"
+          >
+            <input
+              type="text"
+              inputMode="numeric"
+              value={text}
+              onChange={(e) => setText(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              placeholder="상대방 5자리 코드"
+              className="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-800 text-2xl
+                         text-center font-mono tracking-[0.3em] placeholder:text-slate-400 placeholder:text-base placeholder:tracking-normal
+                         focus:outline-none focus:border-purple-400 touch-target"
+            />
+            <button
+              type="submit"
+              disabled={!text.trim()}
+              className="w-full py-4 rounded-2xl bg-purple-600 text-white text-xl font-bold
+                         active:scale-95 transition-transform disabled:opacity-40 touch-target"
+            >
+              제출하기
+            </button>
+          </motion.form>
+        </>
+      )}
     </div>
   );
 }

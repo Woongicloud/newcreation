@@ -696,7 +696,21 @@ export default function AdminPage() {
 
               {/* 반별 순위 */}
               <div className="bg-gray-900 rounded-2xl p-4">
-                <p className="text-gray-300 font-semibold text-sm mb-3">📊 반별 순위 (평균 점수 기준)</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-gray-300 font-semibold text-sm">📊 반별 순위 (평균 점수 기준)</p>
+                  {awardsData.classLeaderboard?.length > 0 && (
+                    <button
+                      onClick={() => showAwardOnDisplay({
+                        type: 'classLeaderboard',
+                        title: '📊 반별 순위',
+                        classLeaderboard: awardsData.classLeaderboard,
+                      })}
+                      className="px-4 py-2 bg-purple-700 hover:bg-purple-600 rounded-lg font-bold text-sm transition-colors"
+                    >
+                      📺 송출
+                    </button>
+                  )}
+                </div>
                 {awardsData.classLeaderboard?.length > 0 ? (
                   <div className="space-y-2">
                     {awardsData.classLeaderboard.map((cls, i) => (
