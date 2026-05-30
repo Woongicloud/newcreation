@@ -215,6 +215,13 @@ io.on('connection', (socket) => {
     socket.emit(SOCKET_EVENTS.ADMIN_ROOMS_DATA, listSessions());
   });
 
+  // ── Admin: 시상 화면을 해당 방 Display 로 송출 ────────────
+  socket.on(SOCKET_EVENTS.ADMIN_SHOW_AWARD, ({ password, roomCode, award }) => {
+    if (!verifyAdmin(password)) return emitError(socket, '관리자 인증 실패');
+    if (!roomCode) return;
+    io.to(roomCode).emit(SOCKET_EVENTS.GAME_SHOW_AWARD, award || { type: 'clear' });
+  });
+
   // ── 연결 해제 ────────────────────────────────────────────
   socket.on('disconnect', () => {
     handleDisconnect(socket.id);

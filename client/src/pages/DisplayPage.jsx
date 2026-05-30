@@ -59,6 +59,7 @@ export default function DisplayPage() {
   const [joined, setJoined] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [memorizeCount, setMemorizeCount] = useState(0);
+  const [award, setAward] = useState(null); // 시상 송출 { type, title, name, className, detail }
   const audioRef = useRef(null);
 
   function doJoin(code) {
@@ -152,6 +153,17 @@ export default function DisplayPage() {
       setPhase('leaderboard');
     });
 
+    // 시상 송출 — 진행자가 시상 항목을 Display 로 띄움
+    socket.on(SOCKET_EVENTS.GAME_SHOW_AWARD, (data) => {
+      if (!data || data.type === 'clear') {
+        setAward(null);
+        setPhase((p) => (p === 'award' ? 'leaderboard' : p));
+        return;
+      }
+      setAward(data);
+      setPhase('award');
+    });
+
     return () => {
       socket.off(SOCKET_EVENTS.GAME_PLAYER_JOINED);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_START);
@@ -162,6 +174,7 @@ export default function DisplayPage() {
       socket.off(SOCKET_EVENTS.GAME_REACTION_START);
       socket.off(SOCKET_EVENTS.GAME_REACTION_END);
       socket.off(SOCKET_EVENTS.GAME_ROUND_END);
+      socket.off(SOCKET_EVENTS.GAME_SHOW_AWARD);
     };
   }, [joined]);
 
@@ -533,6 +546,61 @@ export default function DisplayPage() {
             className="flex items-center justify-center w-full h-full"
           >
             <Scoreboard leaderboard={leaderboard} isFinal={isFinal} />
+          </motion.div>
+        )}
+
+        {/* ── 시상 송출 (진행자가 항목을 Display 로 띄움) ──── */}
+        {phase === 'award' && award && (
+          <motion.div
+            key="award"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center w-full h-full gap-[2vw] px-[4vw]"
+          >
+            <motion.p
+              initial={{ y: -30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="font-black"
+              style={{ fontSize: '4vw', color: KEY_GREEN }}
+            >
+              {award.title || '🏆 시상'}
+            </motion.p>
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', damping: 12, delay: 0.15 }}
+              className="rounded-[2vw] px-[6vw] py-[3vw] text-center shadow-2xl"
+              style={{ background: FRAME_GRADIENT }}
+            >
+              <p className="text-slate-900 font-black leading-tight" style={{ fontSize: '7vw' }}>
+                {award.name}
+              </p>
+              {award.className && (
+                <p className="text-slate-800 font-bold" style={{ fontSize: '2.4vw' }}>
+                  {award.className}
+                </p>
+              )}
+            </motion.div>
+            {award.detail && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-white font-bold"
+                style={{ fontSize: '2.4vw' }}
+              >
+                {award.detail}
+              </motion.p>
+            )}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              style={{ fontSize: '4vw' }}
+            >
+              🎉🎊🎉
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

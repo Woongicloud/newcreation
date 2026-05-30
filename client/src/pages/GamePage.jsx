@@ -40,6 +40,7 @@ export default function GamePage() {
   const [showGuide, setShowGuide] = useState(false);
   const [memorizePhase, setMemorizePhase] = useState(false); // 기억력 모드 암기 단계
   const [emojiWrongNonce, setEmojiWrongNonce] = useState(0);  // 이모지 오답 흔들림 트리거
+  const [emojiAssign, setEmojiAssign] = useState(null);       // 이모지 내 세트/코드 (GamePage 에서 수신해 레이스 방지)
 
   useEffect(() => {
     if (!player) {
@@ -53,7 +54,7 @@ export default function GamePage() {
       const doRejoin = () => socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { playerId: savedId, roomCode: savedRoom });
       if (socket.connected) doRejoin(); else socket.once('connect', doRejoin);
 
-      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp, hasSubmitted: hs, memorizeActive: ma }) => {
+      const onSync = ({ status, currentQuestion: q, timeRemaining: tr, players: sp, hasSubmitted: hs, memorizeActive: ma, emojiAssign: ea }) => {
         const myPlayer = sp?.find(p => p.id === savedId)
           || { id: savedId, name: localStorage.getItem('playerName') || '', className: localStorage.getItem('playerClass') || '', score: 0 };
         setPlayer(myPlayer);
@@ -65,6 +66,7 @@ export default function GamePage() {
           setTimeRemaining(tr || 0);
           setPhase('game');
           setMemorizePhase(!!ma);
+          setEmojiAssign(ea || null);
           // 이미 제출한 문제면 "제출 완료" 상태 복원 (새로고침 재득점 방지)
           if (hs) setHasSubmitted(true);
         }
@@ -95,12 +97,13 @@ export default function GamePage() {
       }
     };
 
-    const onStateSync = ({ currentQuestion: q, timeRemaining: tr, hasSubmitted: hs, memorizeActive: ma }) => {
+    const onStateSync = ({ currentQuestion: q, timeRemaining: tr, hasSubmitted: hs, memorizeActive: ma, emojiAssign: ea }) => {
       if (q) {
         setCurrentQuestion({ ...q });
         setTimeRemaining(tr || 0);
         setPhase('game');
         setMemorizePhase(!!ma);
+        setEmojiAssign(ea || null);
         if (hs) setHasSubmitted(true);
       }
     };
@@ -112,10 +115,13 @@ export default function GamePage() {
       questionStartTime.current = Date.now();
       setPhase('game');
       setEmojiWrongNonce(0);
+      setEmojiAssign(null); // 새 문제 — 이모지 배정 초기화 (이어서 GAME_EMOJI_ASSIGN 수신)
       // 기억력 모드: 암기 단계면 답변 잠금(타이머는 암기 종료 후 시작)
       const isMemorize = question.gameMode === GAME_MODES.IMAGE_MEMORY && (question.memorizeDuration ?? 0) > 0;
       setMemorizePhase(isMemorize);
     };
+
+    const onEmojiAssign = (data) => setEmojiAssign(data || null);
 
     const onMemoryEnd = () => {
       setMemorizePhase(false);
@@ -155,6 +161,7 @@ export default function GamePage() {
     socket.on(SOCKET_EVENTS.GAME_STATE_SYNC, onStateSync);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
     socket.on(SOCKET_EVENTS.GAME_MEMORY_END, onMemoryEnd);
+    socket.on(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, onEmojiAssign);
     socket.on(SOCKET_EVENTS.GAME_TIMER_TICK, onTimerTick);
     socket.on(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
     socket.on(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
@@ -166,6 +173,7 @@ export default function GamePage() {
       socket.off(SOCKET_EVENTS.GAME_STATE_SYNC, onStateSync);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_START, onQuestionStart);
       socket.off(SOCKET_EVENTS.GAME_MEMORY_END, onMemoryEnd);
+      socket.off(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, onEmojiAssign);
       socket.off(SOCKET_EVENTS.GAME_TIMER_TICK, onTimerTick);
       socket.off(SOCKET_EVENTS.GAME_SHOW_RESULT, onShowResult);
       socket.off(SOCKET_EVENTS.GAME_QUESTION_END, onQuestionEnd);
@@ -367,6 +375,7 @@ export default function GamePage() {
               {gameMode === GAME_MODES.EMOJI_FIND && (
                 <EmojiFind
                   key={currentQuestion.id}
+                  assign={emojiAssign}
                   onSubmitCode={handleEmojiSubmit}
                   hasSubmitted={hasSubmitted}
                   wrongNonce={emojiWrongNonce}

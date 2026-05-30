@@ -219,7 +219,8 @@ function broadcastQuestion(roomCode, io) {
   if (!session) return;
 
   const round = session.rounds[session.currentRound];
-  if (!round) return endGame(roomCode, io);
+  // 라운드를 모두 소진하면 자동 종료하지 않고 대기 (진행자가 "종료" 버튼으로 종료)
+  if (!round) return finishAllRounds(roomCode, io);
 
   const question = round.questions[session.currentQuestionIndex];
   if (!question) return endRound(roomCode, io);
@@ -552,10 +553,14 @@ function endRound(roomCode, io) {
     .slice(0, 10)
     .map((p, idx) => ({ rank: idx + 1, name: p.name, className: p.className, score: p.score }));
 
-  io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_END, { leaderboard });
-
   session.currentRound++;
   session.currentQuestionIndex = 0;
+
+  // 마지막 라운드였으면 자동 종료하지 않고 "모든 라운드 완료"를 알림 (진행자가 종료 버튼으로 종료)
+  const allRoundsComplete = session.currentRound >= session.rounds.length;
+  if (allRoundsComplete) session.allRoundsDone = true;
+
+  io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_END, { leaderboard, allRoundsComplete });
 }
 
 function nextRound(roomCode, io) {
@@ -563,10 +568,28 @@ function nextRound(roomCode, io) {
   if (!session) return;
 
   if (session.currentRound >= session.rounds.length) {
-    endGame(roomCode, io);
+    // 모든 라운드 완료 — 자동 종료하지 않고 진행자의 "종료" 버튼을 기다린다
+    finishAllRounds(roomCode, io);
   } else {
     broadcastQuestion(roomCode, io);
   }
+}
+
+// 모든 라운드를 마쳤을 때 (자동 endGame 대신) 최종 순위만 표시하고 종료 버튼 대기
+function finishAllRounds(roomCode, io) {
+  const session = sessions[roomCode];
+  if (!session) return;
+  clearInterval(session.timer);
+  session.timer = null;
+  session.allRoundsDone = true;
+
+  const leaderboard = Array.from(session.players.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map((p, idx) => ({ rank: idx + 1, name: p.name, className: p.className, score: p.score }));
+
+  // isFinal 없이 allRoundsComplete 로 알림 → 진행자 패널의 "종료" 버튼을 활성 유지
+  io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_END, { leaderboard, allRoundsComplete: true });
 }
 
 function computeAwardsFromSession(session) {
@@ -656,17 +679,20 @@ function endGame(roomCode, io) {
     .sort((a, b) => b.score - a.score)
     .map((p, idx) => ({ rank: idx + 1, name: p.name, className: p.className, score: p.score }));
 
-  // 시상 데이터 미리 계산 (세션 삭제 전에)
+  // 시상 데이터 계산 + 종료 시각 기록 (시상 창에서 종료된 방을 다시 불러올 수 있게 세션 유지)
   session.awards = computeAwardsFromSession(session);
+  session.finishedAt = Date.now();
 
   io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_END, { leaderboard: finalLeaderboard, isFinal: true });
   io.to(roomCode).emit(SOCKET_EVENTS.GAME_SESSION_ENDED, { finalLeaderboard });
 
-  // 30초 후 메모리에서 세션 제거
+  // 종료된 세션은 시상 진행을 위해 메모리에 유지. 메모리 누적 방지를 위해 3시간 후 정리.
   setTimeout(() => {
-    delete sessions[roomCode];
-    console.log(`[Game] Session ${roomCode} removed from memory`);
-  }, 30_000);
+    if (sessions[roomCode]?.status === GAME_STATUS.FINISHED) {
+      delete sessions[roomCode];
+      console.log(`[Game] Finished session ${roomCode} cleaned up`);
+    }
+  }, 3 * 60 * 60 * 1000);
 }
 
 function handleDisconnect(socketId) {
@@ -696,10 +722,14 @@ function rejoinSession(roomCode, socketId, playerId, io) {
       const round = session.rounds[session.currentRound];
       const question = round?.questions[session.currentQuestionIndex];
 
-      // 이모지 사람 찾기 진행 중이면 개인 배정(세트+코드) 재전송
+      // 이모지 사람 찾기 진행 중이면 개인 배정(세트+코드) 복원
+      let emojiAssign = null;
       if (round?.gameMode === GAME_MODES.EMOJI_FIND && session.emoji) {
         const a = session.emoji.assignments.get(playerId);
-        if (a) io.to(socketId).emit(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, { emojiSet: a.emojiSet, code: a.code });
+        if (a) {
+          emojiAssign = { emojiSet: a.emojiSet, code: a.code };
+          io.to(socketId).emit(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, emojiAssign);
+        }
       }
 
       const hasSubmitted = round?.gameMode === GAME_MODES.EMOJI_FIND
@@ -717,6 +747,8 @@ function rejoinSession(roomCode, socketId, playerId, io) {
         players: Array.from(session.players.values()),
         timeRemaining: session.timer ? null : 0,
         memorizeActive: !!session.memorizeActive,
+        // 새로고침 시 이모지 세트/코드 복원 (초기 재접속 레이스 방지)
+        emojiAssign,
         // 이미 이 문제에 제출했는지 — 새로고침 시 "제출 완료" 상태 복원용
         hasSubmitted,
       };
@@ -752,6 +784,9 @@ function listSessions() {
     currentRound: s.currentRound,
     totalRounds: s.rounds.length,
     createdAt: s.createdAt,
+    finishedAt: s.finishedAt || null,
+    hasAwards: !!s.awards,
+    allRoundsDone: !!s.allRoundsDone,
   }));
 }
 

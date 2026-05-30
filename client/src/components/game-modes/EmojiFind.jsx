@@ -1,21 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import socket from '../../lib/socket.js';
-import { SOCKET_EVENTS } from '@shared/constants.js';
 
-// 이모지 사람 찾기 — 내 세트/코드는 서버가 소켓별로 보내줌(GAME_EMOJI_ASSIGN).
+// 이모지 사람 찾기 — 내 세트/코드(assign)는 GamePage 가 GAME_EMOJI_ASSIGN 을 받아 prop 으로 전달.
+// (컴포넌트 마운트 후 리스너 등록 레이스를 피하기 위해 GamePage 에서 항상 수신)
 // 같은 세트를 가진 다른 사람의 코드를 입력해 제출. 오답이면 재시도.
-export default function EmojiFind({ onSubmitCode, hasSubmitted, wrongNonce }) {
-  const [assign, setAssign] = useState(null); // { emojiSet, code }
+export default function EmojiFind({ assign, onSubmitCode, hasSubmitted, wrongNonce }) {
   const [text, setText] = useState('');
   const [shake, setShake] = useState(false);
   const lastWrong = useRef(0);
-
-  useEffect(() => {
-    const onAssign = (data) => setAssign(data);
-    socket.on(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, onAssign);
-    return () => socket.off(SOCKET_EVENTS.GAME_EMOJI_ASSIGN, onAssign);
-  }, []);
 
   // 오답 신호(wrongNonce 증가) → 흔들림 + 입력 초기화
   useEffect(() => {
