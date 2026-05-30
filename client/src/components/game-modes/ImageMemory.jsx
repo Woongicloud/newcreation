@@ -1,44 +1,30 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import MultipleChoice from './MultipleChoice.jsx';
 
-// 이미지 기억력 테스트 — 암기 단계엔 "기억하세요" 안내(이미지는 프로젝터 전용),
-// 암기 종료 후엔 기존 객관식 버튼으로 답변.
-export default function ImageMemory({ question, onSubmit, hasSubmitted, correctAnswer, memorizePhase }) {
-  const [count, setCount] = useState(question.memorizeDuration || 0);
-
-  useEffect(() => {
-    if (!memorizePhase) return;
-    setCount(question.memorizeDuration || 0);
-    const t = setInterval(() => setCount((c) => (c > 0 ? c - 1 : 0)), 1000);
-    return () => clearInterval(t);
-  }, [memorizePhase, question.id, question.memorizeDuration]);
-
-  if (memorizePhase) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center gap-4 py-10 text-center"
-      >
-        <div className="text-6xl animate-pulse">🧠</div>
-        <p className="text-slate-800 text-2xl font-bold">화면의 이미지를 기억하세요!</p>
-        <p className="text-slate-500 text-sm">잠시 후 문제가 나옵니다</p>
-        {count > 0 && (
-          <div className="mt-2 w-20 h-20 rounded-full bg-purple-100 border-2 border-purple-300 flex items-center justify-center">
-            <span className="text-3xl font-black text-purple-700 tabular-nums">{count}</span>
-          </div>
-        )}
-      </motion.div>
-    );
-  }
+// 이미지 기억력 — 제한시간 동안 이미지(세트)를 보면서 객관식으로 답변.
+// imageUrls(여러 장) 우선, 없으면 단일 imageUrl 을 사용.
+export default function ImageMemory({ question, onSubmit, hasSubmitted, correctAnswer }) {
+  const images = question.imageUrls?.length
+    ? question.imageUrls
+    : (question.imageUrl ? [question.imageUrl] : []);
 
   return (
-    <MultipleChoice
-      question={question}
-      onSubmit={onSubmit}
-      hasSubmitted={hasSubmitted}
-      correctAnswer={correctAnswer}
-    />
+    <div className="w-full px-2 space-y-4">
+      {images.length > 0 && (
+        <div className={`grid gap-2 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {images.map((src, i) => (
+            <div key={i} className="rounded-2xl overflow-hidden bg-black/40">
+              <img src={src} alt="" className="w-full max-h-56 object-contain" />
+            </div>
+          ))}
+        </div>
+      )}
+      <MultipleChoice
+        question={question}
+        onSubmit={onSubmit}
+        hasSubmitted={hasSubmitted}
+        correctAnswer={correctAnswer}
+        compact
+      />
+    </div>
   );
 }

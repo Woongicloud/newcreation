@@ -364,12 +364,11 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ### 9. 이미지 기억력 테스트 `image_memory`
 
-이미지를 **설정 시간(`memorizeDuration`)만큼 한 번 보여준 뒤 숨기고**, 그 이미지에 대한 객관식 문제를 **연속으로** 출제합니다. (한 이미지에 여러 문제 가능)
+이미지(또는 여러 장의 이미지 세트)를 **제한시간(`timeLimit`) 내내 보여주면서** 그 이미지에 대한 객관식 문제를 출제합니다. 이미지는 **프로젝터와 휴대폰 양쪽에** 표시됩니다.
 
-- 한 라운드 = 한 이미지 블록.
-- **첫 문제**에만 `imageUrl` + `memorizeDuration`(>0) 을 넣어 이미지를 보여줍니다.
-- **이후 문제**들은 `memorizeDuration: 0` 으로 두면 이미지를 다시 보여주지 않고(기억에 의존) 바로 객관식을 냅니다.
-- 이미지는 **프로젝터에만** 표시됩니다 (휴대폰엔 "기억하세요" 안내).
+- 문제마다 `imageUrl`(한 장) 또는 `imageUrls`(여러 장 배열) 중 하나를 넣습니다.
+- 별도 암기 단계는 없습니다. 참가자는 이미지를 보면서 답을 고릅니다.
+- 한 라운드에 여러 문제(각자 이미지 포함)를 둘 수 있습니다.
 
 ```json
 {
@@ -378,20 +377,19 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
   "gameMode": "image_memory",
   "questions": [
     {
-      "content": "방금 본 그림 속 사람은 몇 명이었나요?",
+      "content": "이 그림 속 사람은 몇 명인가요?",
       "imageUrl": "scene.jpg",
-      "memorizeDuration": 10,
       "choices": ["3명", "4명", "5명", "6명"],
       "correctAnswer": "5명",
       "timeLimit": 15,
       "maxScore": 1000
     },
     {
-      "content": "강아지는 몇 마리였나요?",
-      "memorizeDuration": 0,
-      "choices": ["0", "1", "2", "3"],
-      "correctAnswer": "2",
-      "timeLimit": 15,
+      "content": "두 이미지에서 달라진 부분은?",
+      "imageUrls": ["before.jpg", "after.jpg"],
+      "choices": ["하늘 색", "나무 위치", "사람 수", "건물 모양"],
+      "correctAnswer": "사람 수",
+      "timeLimit": 20,
       "maxScore": 1000
     }
   ]
@@ -400,8 +398,8 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 | 추가 필드 | 타입 | 필수 | 설명 |
 |---------|------|------|------|
-| `imageUrl` | string | 첫 문제 | 암기할 이미지 (파일명 또는 URL) |
-| `memorizeDuration` | number | 첫 문제 | 이미지 노출 시간(초). 기본 0. 첫 문제만 `>0`, 후속 문제는 `0` |
+| `imageUrl` | string | 택1 | 이미지 한 장 (파일명 또는 URL) |
+| `imageUrls` | array(string) | 택1 | 이미지 세트(여러 장). 있으면 `imageUrl`보다 우선 |
 | `choices` | array(string) | ✅ | 선택지 4개 |
 
 ---
@@ -637,7 +635,7 @@ newcreation/
 | `emoji_find`에 다른 `correctAnswer` 입력 | 반드시 `"__emoji_find__"` |
 | `consonantHint`에 글자 포함 | 자음(초성)만 입력: `ㅅㅇ` (서울) |
 | 이미지 파일 경로 누락 | `/media/` 폴더에 파일 있는지 확인 후 파일명만 입력 |
-| `image_memory` 후속 문제에 이미지 재노출 | 첫 문제만 `imageUrl`+`memorizeDuration>0`, 이후 문제는 `memorizeDuration: 0` |
+| `image_memory` 이미지가 안 보임 | 각 문제에 `imageUrl` 또는 `imageUrls`를 넣으면 제한시간 내내 표시됨 (`memorizeDuration` 불필요) |
 | `emoji_find`의 `emojiPool` 너무 적음 | 그룹마다 다른 세트가 나오도록 넉넉히(12개 이상) |
 | `roundNumber` 중복 | 각 라운드마다 고유한 번호 |
 

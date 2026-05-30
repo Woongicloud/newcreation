@@ -83,6 +83,7 @@ async function createSession(io) {
     memorizeActive: false,       // 기억력 모드 암기 단계 중 제출 차단
     emoji: null,                 // 이모지 사람 찾기 배정 { assignments, codeToPlayerId, solved }
     awards: null,
+    awaitingNextRound: false,    // 라운드 종료 후 다음 라운드 대기 상태
   };
 
   return { roomCode, sessionId: data.id };
@@ -196,6 +197,7 @@ function startGame(roomCode, io) {
   session.status = GAME_STATUS.PLAYING;
   session.currentRound = 0;
   session.currentQuestionIndex = 0;
+  session.awaitingNextRound = false;
 
   supabase.from('sessions').update({ status: GAME_STATUS.PLAYING }).eq('id', session.sessionId);
 
@@ -230,14 +232,19 @@ function broadcastQuestion(roomCode, io) {
   session.questionStartTime = Date.now();
   session.questionEnded = false;
   session.memorizeActive = false;
+  session.awaitingNextRound = false;
   session.emoji = null;
 
-  const memorizeDuration = question.memorizeDuration ?? 0;
+  // 이미지 세트(여러 장) 지원 — imageUrls 우선, 없으면 단일 imageUrl 을 배열로
+  const imageUrls = Array.isArray(question.imageUrls) && question.imageUrls.length
+    ? question.imageUrls.map(resolveMediaUrl)
+    : (question.imageUrl ? [question.imageUrl] : undefined);
 
   const safeQuestion = {
     id: question.id,
     content: question.content,
     imageUrl: question.imageUrl,
+    imageUrls,
     audioUrl: question.audioUrl,
     consonantHint: question.consonantHint,
     choices: question.choices,
@@ -247,7 +254,6 @@ function broadcastQuestion(roomCode, io) {
     questionNumber: question.questionNumber,
     roundNumber: round.roundNumber,
     theme: round.theme,
-    memorizeDuration,
     // 장문 타이핑은 원문(정답)을 Display 에 표시해야 하므로 전달
     targetText: round.gameMode === GAME_MODES.LONG_TYPING ? question.correctAnswer : undefined,
   };
@@ -293,23 +299,7 @@ function broadcastQuestion(roomCode, io) {
     }, delay);
   }
 
-  // 기억력 모드: 이미지 암기 단계(타이머 보류) → memorizeDuration 후 문제 공개 + 답안 타이머
-  if (round.gameMode === GAME_MODES.IMAGE_MEMORY && memorizeDuration > 0) {
-    session.memorizeActive = true;
-    const startedQuestionId = question.id;
-    setTimeout(() => {
-      const s = sessions[roomCode];
-      if (!s || s.status !== GAME_STATUS.PLAYING || s.questionEnded) return;
-      const curRound = s.rounds[s.currentRound];
-      const curQ = curRound?.questions[s.currentQuestionIndex];
-      if (!curQ || curQ.id !== startedQuestionId) return; // 그 사이 다음 문제로 넘어갔으면 무시
-      s.memorizeActive = false;
-      s.questionStartTime = Date.now();
-      io.to(roomCode).emit(SOCKET_EVENTS.GAME_MEMORY_END, {});
-      startAnswerTimer(roomCode, io, question);
-    }, memorizeDuration * 1000);
-    return;
-  }
+  // 기억력 모드: 이미지(세트)를 제한시간 내내 노출하면서 객관식으로 답변 (별도 암기 단계 없음)
 
   startAnswerTimer(roomCode, io, question);
 }
@@ -538,32 +528,38 @@ function nextQuestion(roomCode, io) {
   clearInterval(session.timer);
   session.timer = null;
 
+  // 라운드가 막 끝난 상태에서 "다음 문제"를 누르면 다음 라운드의 첫 문제로 진행
+  if (session.awaitingNextRound) return nextRound(roomCode, io);
+
   const round = session.rounds[session.currentRound];
   if (!round) return;
 
-  session.currentQuestionIndex++;
-
-  if (session.currentQuestionIndex >= round.questions.length) {
-    endRound(roomCode, io);
-  } else {
-    broadcastQuestion(roomCode, io);
+  // 현재 문제가 라운드의 마지막이면 라운드 종료 (인덱스를 미리 올리지 않음 → 다음 라운드 첫 문제 스킵 방지)
+  if (session.currentQuestionIndex + 1 >= round.questions.length) {
+    return endRound(roomCode, io);
   }
+
+  session.currentQuestionIndex++;
+  broadcastQuestion(roomCode, io);
 }
 
 function endRound(roomCode, io) {
   const session = sessions[roomCode];
   if (!session) return;
 
+  clearInterval(session.timer);
+  session.timer = null;
+
   const leaderboard = Array.from(session.players.values())
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
     .map((p, idx) => ({ rank: idx + 1, name: p.name, className: p.className, score: p.score }));
 
-  session.currentRound++;
-  session.currentQuestionIndex = 0;
+  // 라운드 인덱스를 여기서 올리지 않는다 — 실제 진행은 nextRound 에서. 대기 상태만 표시.
+  session.awaitingNextRound = true;
 
   // 마지막 라운드였으면 자동 종료하지 않고 "모든 라운드 완료"를 알림 (진행자가 종료 버튼으로 종료)
-  const allRoundsComplete = session.currentRound >= session.rounds.length;
+  const allRoundsComplete = session.currentRound + 1 >= session.rounds.length;
   if (allRoundsComplete) session.allRoundsDone = true;
 
   io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_END, { leaderboard, allRoundsComplete });
@@ -573,12 +569,18 @@ function nextRound(roomCode, io) {
   const session = sessions[roomCode];
   if (!session) return;
 
-  if (session.currentRound >= session.rounds.length) {
-    // 모든 라운드 완료 — 자동 종료하지 않고 진행자의 "종료" 버튼을 기다린다
-    finishAllRounds(roomCode, io);
-  } else {
-    broadcastQuestion(roomCode, io);
+  clearInterval(session.timer);
+  session.timer = null;
+
+  // 다음 라운드가 없으면 자동 종료하지 않고 진행자의 "종료" 버튼을 기다린다
+  if (session.currentRound + 1 >= session.rounds.length) {
+    return finishAllRounds(roomCode, io);
   }
+
+  session.currentRound++;
+  session.currentQuestionIndex = 0;
+  session.awaitingNextRound = false;
+  broadcastQuestion(roomCode, io);
 }
 
 // 모든 라운드를 마쳤을 때 (자동 endGame 대신) 최종 순위만 표시하고 종료 버튼 대기

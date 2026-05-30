@@ -116,9 +116,8 @@ export default function GamePage() {
       setPhase('game');
       setEmojiWrongNonce(0);
       setEmojiAssign(null); // 새 문제 — 이모지 배정 초기화 (이어서 GAME_EMOJI_ASSIGN 수신)
-      // 기억력 모드: 암기 단계면 답변 잠금(타이머는 암기 종료 후 시작)
-      const isMemorize = question.gameMode === GAME_MODES.IMAGE_MEMORY && (question.memorizeDuration ?? 0) > 0;
-      setMemorizePhase(isMemorize);
+      // 기억력 모드: 이미지를 제한시간 내내 노출 (별도 암기 단계 없음)
+      setMemorizePhase(false);
     };
 
     const onEmojiAssign = (data) => setEmojiAssign(data || null);
@@ -369,7 +368,6 @@ export default function GamePage() {
                   onSubmit={handleSubmit}
                   hasSubmitted={hasSubmitted}
                   correctAnswer={correctAnswer}
-                  memorizePhase={memorizePhase}
                 />
               )}
               {gameMode === GAME_MODES.EMOJI_FIND && (

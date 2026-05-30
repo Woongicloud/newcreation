@@ -104,10 +104,7 @@ export default function DisplayPage() {
       setTimeRemaining(timeLimit);
       setCorrectAnswer(null);
       setSubmittedCount(0);
-      const isMemorize = q.gameMode === GAME_MODES.IMAGE_MEMORY && (q.memorizeDuration ?? 0) > 0;
-      setPhase(
-        q.gameMode === GAME_MODES.REACTION ? 'reaction_wait' : isMemorize ? 'memorize' : 'question'
-      );
+      setPhase(q.gameMode === GAME_MODES.REACTION ? 'reaction_wait' : 'question');
       // 오디오 퀴즈: Display에서 자동 재생
       if (q.audioUrl) {
         if (audioRef.current) {
@@ -317,15 +314,26 @@ export default function DisplayPage() {
                 </span>
               </div>
 
-              {/* 이미지 (image_quiz / image_multiple_choice) — 기억력 모드는 암기 단계에서만 노출 */}
-              {question.imageUrl && question.gameMode !== GAME_MODES.IMAGE_MEMORY && (
-                <img
-                  src={question.imageUrl}
-                  alt=""
-                  className="max-h-[25vh] object-contain rounded-xl self-start border-2"
-                  style={{ borderColor: `${KEY_BLUE}66` }}
-                />
-              )}
+              {/* 이미지 (단일 또는 세트) — 기억력 모드 포함, 제한시간 내내 노출 */}
+              {(() => {
+                const imgs = question.imageUrls?.length
+                  ? question.imageUrls
+                  : (question.imageUrl ? [question.imageUrl] : []);
+                if (!imgs.length) return null;
+                return (
+                  <div className={`grid gap-[1vw] self-start ${imgs.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {imgs.map((src, i) => (
+                      <img
+                        key={i}
+                        src={src}
+                        alt=""
+                        className="max-h-[28vh] object-contain rounded-xl border-2"
+                        style={{ borderColor: `${KEY_BLUE}66` }}
+                      />
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* 초성 힌트 */}
               {question.consonantHint && (
