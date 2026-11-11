@@ -161,9 +161,12 @@ function QuestionScreen({ state }) {
         )}
 
         {question.imageUrls?.length > 0 && (
-          <div className={`flex-1 min-h-0 grid gap-[1vw] ${question.imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`flex-1 min-h-[12vw] grid grid-rows-1 gap-[1vw] ${question.imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {/* 남은 높이 안에서만 그린다 — 이미지가 보기 버튼을 덮지 않도록 */}
             {question.imageUrls.map((src) => (
-              <img key={src} src={src} alt="" className="w-full h-full object-contain rounded-[1vw]" style={{ background: 'rgba(0,0,0,0.25)' }} />
+              <div key={src} className="relative min-h-0 rounded-[1vw] overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)' }}>
+                <img src={src} alt="" className="absolute inset-0 w-full h-full object-contain" />
+              </div>
             ))}
           </div>
         )}
@@ -177,7 +180,7 @@ function QuestionScreen({ state }) {
         )}
 
         {question.choices && (
-          <div className="grid grid-cols-2 gap-[1.2vw] mt-auto">
+          <div className="grid grid-cols-2 gap-[1.2vw] mt-auto shrink-0">
             {question.choices.map((choice, i) => {
               const isAnswer = revealed && choice === question.correctAnswer;
               return (
