@@ -194,8 +194,11 @@ export function viewFor(room, role, playerId, ctx = buildContext(room)) {
   // 진행자·관리자
   view.next = nextPreview(room);
   view.outline = outline(room);
+  // 시상 세트 구성 (관리자 편집·리모트 미리보기용)
+  view.awardConfig = room.set?.awards || [];
   if (room.isFinished && room.awards) {
-    view.awardList = room.awards.items.map((i) => ({ type: i.type, title: i.title, reveal: i.reveal, steps: i.steps }));
+    view.awardList = room.awards.items.map((i) => ({ type: i.type, title: i.title, reveal: i.reveal, steps: i.steps, result: i.result }));
+    view.awardIndex = room.awards.index;
   }
   if (role === ROLES.ADMIN) {
     view.players = ctx.ranked.map((e) => playerRow(room.players.get(e.playerId), e.rank));

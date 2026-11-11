@@ -1,6 +1,6 @@
 // Socket.io 계층 — 인증·역할 확인 후 Room 에 전달하고, Room 의 변경을 역할별로 내보낸다.
 import { EVENTS, ROLES, ERRORS, COMMANDS } from '../../shared/protocol.js';
-import { validateQuizSet } from '../../shared/quizSchema.js';
+import { validateQuizSet, validateAwards } from '../../shared/quizSchema.js';
 import { signToken, verifyToken } from './auth.js';
 import { buildContext, viewFor } from './rooms/views.js';
 
@@ -40,6 +40,9 @@ export function attachSockets(io, registry) {
       for (const role of [ROLES.DISPLAY, ROLES.HOST, ROLES.ADMIN]) {
         io.to(channel.role(code, role)).emit(EVENTS.ROOM_PROGRESS, payload);
       }
+    });
+    room.on('player_state', (playerId) => {
+      io.to(channel.player(code, playerId)).emit(EVENTS.ROOM_STATE, viewFor(room, ROLES.PLAYER, playerId));
     });
     room.on('private', (playerId, event, payload) => io.to(channel.player(code, playerId)).emit(event, payload));
     room.on('closed', () => {
@@ -229,6 +232,12 @@ export function attachSockets(io, registry) {
     }));
 
     on(EVENTS.ADMIN_SETTINGS, withRoom((room, { patch }) => room.updateSettings(patch)));
+    on(EVENTS.ADMIN_SET_AWARDS, withRoom((room, { items }) => {
+      if (!room.set) return fail(ERRORS.INVALID, '문제 세트가 없습니다.');
+      const result = validateAwards(items, { teams: room.set.teams, roundCount: room.set.rounds.length });
+      if (!result.ok) return { ok: false, error: ERRORS.BAD_REQUEST, message: '시상 세트에 오류가 있습니다.', errors: result.errors };
+      return room.setAwards(result.awards);
+    }));
     on(EVENTS.ADMIN_UPDATE_PLAYER, withRoom((room, { playerId, name, group, unit }) => room.updatePlayer(playerId, { name, group, unit })));
     on(EVENTS.ADMIN_REMOVE_PLAYER, withRoom((room, { playerId }) => {
       const result = room.removePlayer(playerId);

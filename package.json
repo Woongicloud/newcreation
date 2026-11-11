@@ -13,8 +13,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "npm run build --workspace=client",
     "install:all": "npm install --workspaces",
-    "dev:server:v2": "npm run dev:v2 --workspace=server",
-    "test": "vitest run"
+    "test": "vitest run",
+    "loadtest": "npm run loadtest --workspace=server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

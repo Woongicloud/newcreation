@@ -7,7 +7,7 @@ export const MODES = [
     sub: 'Multiple Choice',
     color: 'from-red-100 to-blue-100 border-red-200',
     desc: '화면에 표시된 4개의 보기 중 정답을 고르세요.',
-    tip: '빨리 맞힐수록 더 높은 점수! 제출 후 버튼 색이 바뀝니다.',
+    tip: '한 번 누르면 바꿀 수 없어요. 시간 안에만 내면 점수는 같으니 신중하게!',
     how: '① ② ③ ④ 버튼 중 하나를 탭하면 즉시 제출됩니다.',
   },
   {
@@ -61,7 +61,7 @@ export const MODES = [
     sub: 'Reaction Game',
     color: 'from-green-100 to-green-50 border-green-200',
     desc: '신호가 뜨는 순간 버튼을 눌러 반응 속도를 겨루세요!',
-    tip: '신호 전에 미리 누르면 안 됩니다. 노란 화면이 뜨는 순간 누르세요!',
+    tip: '신호 전에 미리 누르면 실격(0점)! 노란 화면이 뜨는 순간 누르세요.',
     how: '준비 → 노란 화면 등장 → 즉시 탭!',
   },
   {
@@ -78,9 +78,9 @@ export const MODES = [
     title: '이미지 기억력',
     sub: 'Image Memory',
     color: 'from-fuchsia-100 to-purple-50 border-fuchsia-200',
-    desc: '화면의 이미지를 잠깐 보여준 뒤 숨기고, 그 이미지에 대한 문제를 연속으로 냅니다.',
-    tip: '이미지가 보이는 동안 최대한 자세히 기억하세요! 한 이미지에 여러 문제가 나올 수 있어요.',
-    how: '암기 시간 → 이미지 사라짐 → 객관식으로 답변.',
+    desc: '이미지를 보고 그 이미지에 대한 문제에 답하세요.',
+    tip: '이미지를 꼼꼼히 살펴보세요! 한 이미지에 여러 문제가 나올 수 있어요.',
+    how: '이미지 확인 → ① ② ③ ④ 중 하나를 탭.',
   },
   {
     icon: '🔎',
@@ -97,7 +97,7 @@ export const MODES = [
     sub: 'Long Typing',
     color: 'from-emerald-100 to-teal-50 border-emerald-200',
     desc: '큰 화면에 표시된 긴 문장을 똑같이 따라 입력하세요.',
-    tip: '정확하고 빠르게 칠수록 고득점! 원문은 큰 화면에만 표시됩니다.',
+    tip: '정확도가 기준을 넘으면 점수! 속도보다 정확하게. 원문은 큰 화면에만 표시됩니다.',
     how: '화면을 보며 입력창에 타이핑 → 제출하기.',
   },
 ];
@@ -137,11 +137,12 @@ export default function GuideContent({ animate = true }) {
 
       <div className="mt-8 bg-white/70 border border-slate-200 rounded-2xl p-4 text-center">
         <p className="text-slate-700 text-sm font-semibold mb-1">채점 방식</p>
-        <p className="text-slate-500 text-xs">빨리 정답을 맞힐수록 높은 점수 (최대 1000점)</p>
-        <p className="text-slate-500 text-xs">오답 제출 시 페널티 점수 차감</p>
-        <p className="text-slate-500 text-xs mt-2">반응게임은 빠른 순서대로 점수 차등 지급</p>
-        <p className="text-slate-500 text-xs">장문 타이핑은 원문과 일치할수록 부분 점수 + 속도 보너스</p>
+        <p className="text-slate-500 text-xs">정답이면 문제에 정해진 점수 — 빨리 내도 늦게 내도 같습니다</p>
+        <p className="text-slate-500 text-xs">오답은 감점. 단, 한 라운드에서 깎이는 점수에는 한도가 있어요</p>
+        <p className="text-slate-500 text-xs mt-2">반응게임은 빠른 순서대로 순위 점수</p>
+        <p className="text-slate-500 text-xs">장문 타이핑은 정확도 기준을 넘으면 점수 (감점 없음)</p>
         <p className="text-slate-500 text-xs">이모지 찾기는 정답을 맞힐 때까지 재시도 가능</p>
+        <p className="text-slate-500 text-xs mt-2">동점이면 답을 빨리 낸 사람이 위</p>
       </div>
     </>
   );

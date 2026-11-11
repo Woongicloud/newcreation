@@ -1,6 +1,6 @@
 # v2 프로토콜
 
-서버(`server/src/`)와 모든 화면이 주고받는 내용. 이름은 `shared/protocol.js`에 상수로 있다.
+서버(`server/src/`)와 모든 화면(`client/src/lib/connection.js`)이 주고받는 내용. 이름은 `shared/protocol.js`에 상수로 있다.
 
 ## 연결과 역할
 
@@ -61,7 +61,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 
 ## 상태 — `room:state`
 
-상태가 바뀔 때마다 역할에 맞는 전체 스냅샷이 온다. 화면은 이것만으로 그릴 수 있어야 한다(재접속 시에도 같은 스냅샷 한 번).
+상태가 바뀔 때마다 역할에 맞는 전체 스냅샷이 온다. 참가자가 답을 제출하면 그 참가자에게만 새 스냅샷이 바로 간다(`me.answered`, `me.result`). 화면은 이것만으로 그릴 수 있어야 한다(재접속 시에도 같은 스냅샷 한 번).
 
 ```jsonc
 {
@@ -96,7 +96,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 |---|---|
 | 참가자 | `me { id, name, group, unit, score, rank, answered, result, emoji }` |
 | Display | `lobby [{ name, group, unit }]` (대기실에서만) |
-| 진행자·관리자 | `next { action, content?, correctAnswer?, theme?, title? }`, `outline` (순서표), `awardList`, `award.result` (공개 전 전체 결과) |
+| 진행자·관리자 | `next { action, content?, correctAnswer?, theme?, title? }`, `outline` (순서표), `awardConfig` (시상 세트 구성), `awardList`·`awardIndex` (종료 후 결과), `award.result` (공개 전 전체 결과) |
 | 관리자 | `players [{ id, name, group, unit, score, online, rank }]` |
 
 그 밖의 서버 → 클라이언트 이벤트
@@ -119,6 +119,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 | `admin:create_room` | 관리자 | → `{ roomCode, state }` |
 | `admin:load_set { roomCode, set }` | 관리자 | 검증 후 적용. 실패 시 `errors [{ path, message }]`. 게임 시작 전에만 |
 | `admin:settings { roomCode, patch }` | 관리자 | 표시 설정 변경 |
+| `admin:set_awards { roomCode, items }` | 관리자 | 시상 세트 교체. 시상을 시작하기 전까지. 게임 종료 뒤면 결과를 다시 계산 |
 | `admin:update_player` / `admin:remove_player` | 관리자 | 이름·소속 수정 / 내보내기 |
 | `admin:host_token { roomCode }` | 관리자 | 진행자 링크용 토큰 |
 | `admin:list_rooms` / `admin:close_room` | 관리자 | 방 목록 / 방 닫기 |

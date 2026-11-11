@@ -56,6 +56,82 @@ function resolveMediaUrl(url) {
   return `/media/${url}`;
 }
 
+// 숫자 필드 읽기: 없으면 fallback, 있으면 범위 검사
+function makeNum(err) {
+  return (value, path, fallback, { min = 0, max = Infinity, integer = false } = {}) => {
+    if (value === undefined || value === null) return fallback;
+    if (!isNum(value) || value < min || value > max || (integer && !Number.isInteger(value))) {
+      err(path, `${min} 이상${max === Infinity ? '' : ` ${max} 이하`}의 ${integer ? '정수' : '숫자'}여야 합니다.`);
+      return fallback;
+    }
+    return value;
+  };
+}
+
+function normalizeAwards(awardItems, { teams, roundCount }, err, warn) {
+  const num = makeNum(err);
+  const awards = [];
+  awardItems.forEach((item, i) => {
+    const ap = `awards.items[${i}]`;
+    if (!isObj(item) || !AWARD_TYPES.includes(item.type)) {
+      return err(`${ap}.type`, `${AWARD_TYPES.join(' / ')} 중 하나여야 합니다.`);
+    }
+    if ((item.type === 'unit_ranking' || item.type === 'group_ranking') && !teams) {
+      return warn(ap, '팀(teams) 설정이 없어 팀 순위 시상을 제외했습니다.');
+    }
+    const out = { type: item.type, title: isStr(item.title) ? item.title.trim() : '시상' };
+    out.reveal = item.reveal ?? DEFAULT_REVEAL[item.type];
+    if (!AWARD_REVEALS.includes(out.reveal)) {
+      err(`${ap}.reveal`, `${AWARD_REVEALS.join(' / ')} 중 하나여야 합니다.`);
+      out.reveal = DEFAULT_REVEAL[item.type];
+    }
+    if (item.type !== 'special') {
+      out.scope = item.scope ?? 'all';
+      const scopes = item.type === 'individual_ranking' ? ['all', 'group', 'unit']
+        : item.type === 'unit_ranking' ? ['all', 'group'] : ['all'];
+      if (!scopes.includes(out.scope) || (out.scope !== 'all' && !teams)) {
+        err(`${ap}.scope`, `${scopes.join(' / ')} 중 하나여야 합니다.`);
+        out.scope = 'all';
+      }
+    }
+    if (item.type.endsWith('_ranking')) {
+      out.top = num(item.top, `${ap}.top`, item.type === 'individual_ranking' ? 3 : null, { min: 1, integer: true });
+    }
+    if (item.type === 'random') out.count = num(item.count, `${ap}.count`, 1, { min: 1, integer: true });
+    if (item.type === 'special') {
+      if (!SPECIAL_METRICS.includes(item.metric)) {
+        return err(`${ap}.metric`, `${SPECIAL_METRICS.join(' / ')} 중 하나여야 합니다.`);
+      }
+      out.metric = item.metric;
+      if (item.metric === 'rank') {
+        out.rank = num(item.rank, `${ap}.rank`, null, { min: 1, integer: true });
+        if (out.rank === null) return err(`${ap}.rank`, '등수(rank)가 필요합니다.');
+      }
+      if (item.metric === 'round_best') {
+        out.round = num(item.round, `${ap}.round`, null, { min: 1, max: Math.max(1, roundCount), integer: true });
+        if (out.round === null) return err(`${ap}.round`, '라운드 번호(round)가 필요합니다.');
+      }
+    }
+    awards.push(out);
+  });
+  return awards;
+
+}
+
+// 시상 세트만 따로 검증 (관리자가 당일에 순서·연출을 바꿀 때)
+export function validateAwards(items, { teams, roundCount }) {
+  const errors = [];
+  const warnings = [];
+  if (!Array.isArray(items)) {
+    errors.push({ path: 'awards.items', message: '배열이어야 합니다.' });
+    return { ok: false, errors, warnings, awards: null };
+  }
+  const awards = normalizeAwards(items, { teams, roundCount },
+    (path, message) => errors.push({ path, message }),
+    (path, message) => warnings.push({ path, message }));
+  return { ok: errors.length === 0, errors, warnings, awards: errors.length === 0 ? awards : null };
+}
+
 export function validateQuizSet(raw) {
   const errors = [];
   const warnings = [];
@@ -67,15 +143,7 @@ export function validateQuizSet(raw) {
     return { ok: false, errors, warnings, set: null };
   }
 
-  // 숫자 필드 읽기: 없으면 fallback, 있으면 범위 검사
-  const num = (value, path, fallback, { min = 0, max = Infinity, integer = false } = {}) => {
-    if (value === undefined || value === null) return fallback;
-    if (!isNum(value) || value < min || value > max || (integer && !Number.isInteger(value))) {
-      err(path, `${min} 이상${max === Infinity ? '' : ` ${max} 이하`}의 ${integer ? '정수' : '숫자'}여야 합니다.`);
-      return fallback;
-    }
-    return value;
-  };
+  const num = makeNum(err);
 
   // ── 점수 기본값 ──────────────────────────────────────────
   const rawScoring = isObj(raw.scoring) ? raw.scoring : {};
@@ -260,50 +328,7 @@ export function validateQuizSet(raw) {
       else err('awards.preset', `${Object.keys(AWARD_PRESETS).join(' / ')} 중 하나여야 합니다.`);
     }
   }
-  const awards = [];
-  awardItems.forEach((item, i) => {
-    const ap = `awards.items[${i}]`;
-    if (!isObj(item) || !AWARD_TYPES.includes(item.type)) {
-      return err(`${ap}.type`, `${AWARD_TYPES.join(' / ')} 중 하나여야 합니다.`);
-    }
-    if ((item.type === 'unit_ranking' || item.type === 'group_ranking') && !teams) {
-      return warn(ap, '팀(teams) 설정이 없어 팀 순위 시상을 제외했습니다.');
-    }
-    const out = { type: item.type, title: isStr(item.title) ? item.title.trim() : '시상' };
-    out.reveal = item.reveal ?? DEFAULT_REVEAL[item.type];
-    if (!AWARD_REVEALS.includes(out.reveal)) {
-      err(`${ap}.reveal`, `${AWARD_REVEALS.join(' / ')} 중 하나여야 합니다.`);
-      out.reveal = DEFAULT_REVEAL[item.type];
-    }
-    if (item.type !== 'special') {
-      out.scope = item.scope ?? 'all';
-      const scopes = item.type === 'individual_ranking' ? ['all', 'group', 'unit']
-        : item.type === 'unit_ranking' ? ['all', 'group'] : ['all'];
-      if (!scopes.includes(out.scope) || (out.scope !== 'all' && !teams)) {
-        err(`${ap}.scope`, `${scopes.join(' / ')} 중 하나여야 합니다.`);
-        out.scope = 'all';
-      }
-    }
-    if (item.type.endsWith('_ranking')) {
-      out.top = num(item.top, `${ap}.top`, item.type === 'individual_ranking' ? 3 : null, { min: 1, integer: true });
-    }
-    if (item.type === 'random') out.count = num(item.count, `${ap}.count`, 1, { min: 1, integer: true });
-    if (item.type === 'special') {
-      if (!SPECIAL_METRICS.includes(item.metric)) {
-        return err(`${ap}.metric`, `${SPECIAL_METRICS.join(' / ')} 중 하나여야 합니다.`);
-      }
-      out.metric = item.metric;
-      if (item.metric === 'rank') {
-        out.rank = num(item.rank, `${ap}.rank`, null, { min: 1, integer: true });
-        if (out.rank === null) return err(`${ap}.rank`, '등수(rank)가 필요합니다.');
-      }
-      if (item.metric === 'round_best') {
-        out.round = num(item.round, `${ap}.round`, null, { min: 1, max: Math.max(1, rounds.length), integer: true });
-        if (out.round === null) return err(`${ap}.round`, '라운드 번호(round)가 필요합니다.');
-      }
-    }
-    awards.push(out);
-  });
+  const awards = normalizeAwards(awardItems, { teams, roundCount: rounds.length }, err, warn);
 
   const set = {
     sessionName: isStr(raw.sessionName) ? raw.sessionName.trim() : '레크레이션',

@@ -4,6 +4,7 @@
 //   'state'              진행 상태가 바뀜 (모든 역할에 새 스냅샷 전송)
 //   'roster'             참가자 목록·접속 상태만 바뀜 (참가자 화면에는 보낼 필요 없음)
 //   'progress'           제출 현황만 바뀜
+//   'player_state' (playerId)              한 참가자의 화면만 바뀜 (본인 제출 직후)
 //   'private' (playerId, event, payload)   한 참가자에게만 보낼 내용
 //   'score_events' (events)                새 점수 기록 (DB 저장용)
 //   'round_rewrite' (roundIdx, events)     문제 무효 처리로 라운드 기록이 다시 계산됨
@@ -18,7 +19,7 @@ import {
 import {
   roundLossCap, applyLossCap, judgeAnswer, rawDelta, reactionPoints,
 } from '../../../shared/scoring.js';
-import { buildEmojiAssignments } from '../../emojiAssign.js';
+import { buildEmojiAssignments } from './emojiAssign.js';
 import { rankPlayers } from './standings.js';
 import { computeAwards, drawWinners } from './awards.js';
 
@@ -97,6 +98,18 @@ export class Room extends EventEmitter {
     this.settings = next;
     this.emit('state');
     return ok({ settings: next });
+  }
+
+  // 시상 세트 교체 (검증된 항목). 시상을 시작한 뒤에는 바꿀 수 없다.
+  setAwards(items) {
+    if (!this.set) return invalid('문제 세트가 없습니다.');
+    if (this.phase === PHASES.AWARDS) return invalid('시상이 시작된 뒤에는 바꿀 수 없습니다.');
+    this.set = { ...this.set, awards: items };
+    if (this.phase === PHASES.FINAL) {
+      this.awards = { items: computeAwards(this.set, this.players.values(), this.events), index: -1, step: 0 };
+    }
+    this._changed();
+    return ok();
   }
 
   // ── 참가자 ───────────────────────────────────────────────
@@ -548,6 +561,7 @@ export class Room extends EventEmitter {
     c.answers.set(playerId, { answer: text, isCorrect, delta: ev.applied, ms, accuracy });
     this.emit('score_events', [ev]);
     this.emit('private', playerId, EVENTS.PLAYER_RESULT, result);
+    this.emit('player_state', player.id);
     this.emit('progress');
     this._closeIfAllSubmitted();
     return ok(result);
@@ -573,6 +587,7 @@ export class Room extends EventEmitter {
     this.current.answers.set(player.id, { answer: code.trim(), isCorrect: true, delta: ev.applied, ms });
     this.emit('score_events', [ev]);
     this.emit('private', player.id, EVENTS.PLAYER_RESULT, result);
+    this.emit('player_state', player.id);
     this.emit('progress');
     this._closeIfAllSubmitted();
     return ok(result);
@@ -590,6 +605,7 @@ export class Room extends EventEmitter {
       c.answers.set(playerId, { falseStart: true, isCorrect: false, delta: 0 });
       const result = { falseStart: true, isCorrect: false, delta: 0, score: player.score };
       this.emit('private', playerId, EVENTS.PLAYER_RESULT, result);
+      this.emit('player_state', player.id);
       this.emit('progress');
       this._closeIfAllSubmitted();
       return ok(result);
@@ -600,6 +616,7 @@ export class Room extends EventEmitter {
     const ms = Math.round(Math.max(MIN_REACTION_MS, Math.min(claimed, Math.max(serverMs, MIN_REACTION_MS))));
     c.answers.set(playerId, { ms });
     c.reaction.results.push({ playerId, name: player.name, ms });
+    this.emit('player_state', player.id);
     this.emit('progress');
     this._closeIfAllSubmitted();
     return ok({ ms });

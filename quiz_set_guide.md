@@ -1,7 +1,9 @@
 # 퀴즈 세트 JSON 작성 가이드
 
-NewCreation 게임 시스템에 업로드할 JSON 파일 형식 안내.  
-Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가능.
+NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 → JSON 올리기**로 올린다.
+올릴 때 서버가 검사해서, 잘못된 곳이 있으면 `rounds[2].questions[0].correctAnswer`처럼 위치와 함께 알려준다.
+
+완성된 예시는 [sample_quiz_set_v2.json](sample_quiz_set_v2.json).
 
 ---
 
@@ -9,15 +11,105 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "sessionName": "5월 레크레이션",
+  "sessionName": "11월 레크레이션",
+  "scoring": { "points": 100, "penalty": 50 },
+  "teams": {
+    "groups": [
+      { "name": "중1", "units": ["브릿지 A", "브릿지 B"] },
+      { "name": "중2", "units": ["브릿지 A", "브릿지 B", "브릿지 C"] }
+    ]
+  },
+  "awards": { "items": [ /* 시상 항목 */ ] },
   "rounds": [ /* 라운드 배열 */ ]
 }
 ```
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `sessionName` | string | 게임 세션 이름 (표시용) |
-| `rounds` | array | 라운드 목록 (순서대로 진행) |
+| 필드 | 필수 | 기본값 | 설명 |
+|------|------|--------|------|
+| `sessionName` | — | `레크레이션` | 행사 이름. 대기 화면·메인 화면에 나온다 |
+| `scoring.points` | — | `100` | 정답 점수 기본값 |
+| `scoring.penalty` | — | `0` | 오답 감점 기본값 |
+| `scoring.lossCapRatio` | — | `0.5` | 라운드 손실 한도 비율 (아래 "점수 규칙") |
+| `teams` | — | 없음 | 학년·브릿지 명단. 없으면 참가자가 소속을 자유 입력한다 |
+| `awards` | — | 이번 행사 세트 | 최종 시상 구성 |
+| `standingsTop` | — | `10` | 중간 집계에 띄울 인원 |
+| `display` | — | — | 표시 설정 초기값. 예: `{ "theme": "pastel" }` |
+| `rounds` | ✅ | — | 라운드 목록 (순서대로 진행) |
+
+---
+
+## 점수 규칙
+
+- 정답 `+points`, 오답 `-penalty`, 미제출 0점. **시간은 점수에 영향이 없다.**
+- 점수 값은 `문제 → 라운드 → scoring → 기본값(100 / 0)` 순으로 찾는다. 대부분은 `scoring`에 한 번만 적고, 보너스 문제에만 `points`를 따로 적으면 된다.
+- **손실 한도**: 한 참가자가 한 라운드에서 깎이는 합계는 그 라운드 전체 문제 감점 합의 50%까지. 자동으로 적용되므로 따로 적지 않는다.
+  - 예: 감점 50점 × 8문제 = 400점 → 그 라운드에서 최대 200점까지만 깎인다.
+- 동점이면 답을 빨리 낸 사람(누적 응답 시간이 짧은 사람)이 위.
+
+> **기존 세트**: `maxScore`는 `points`로 읽는다. 예전에는 빨리 낼수록 점수가 높았지만, 이제는 적힌 점수가 그대로 지급된다.
+> `penalty`를 적지 않은 문제는 감점이 없다 (예전 기본값 200 → 0).
+
+---
+
+## 팀 — 학년과 브릿지 (`teams`)
+
+```json
+"teams": {
+  "labels": { "group": "학년", "unit": "브릿지" },
+  "groups": [
+    { "name": "중1", "units": ["브릿지 A", "브릿지 B"] },
+    { "name": "고1", "units": ["브릿지 A"] }
+  ],
+  "teamScore": "adjusted",
+  "teamScoreWeight": 3
+}
+```
+
+| 필드 | 기본값 | 설명 |
+|------|--------|------|
+| `groups[].name` | — | 학년 이름 (중복 불가) |
+| `groups[].units` | — | 그 학년의 브릿지 이름들. 학년이 다르면 같은 이름을 써도 된다 |
+| `labels` | `학년` / `브릿지` | 화면에 표시할 명칭 |
+| `teamScore` | `adjusted` | 팀 점수 계산: `adjusted`(보정 평균) / `average`(단순 평균) / `sum`(합계) |
+| `teamScoreWeight` | `3` | 보정 평균의 가상 참가자 수 |
+
+- 학생 이름은 넣지 않는다. 참가자가 등록할 때 이름을 입력하고 학년·브릿지를 고른다.
+- 보정 평균: `(팀원 점수 합 + 3 × 전체 평균) ÷ (인원 + 3)`. 인원이 적은 팀이 한 명 덕에 1위를 하거나, 인원 많은 팀이 무조건 유리해지는 것을 막는다. 한 번도 제출하지 않은 참가자는 계산에서 뺀다.
+
+---
+
+## 최종 시상 (`awards`)
+
+```json
+"awards": {
+  "items": [
+    { "type": "unit_ranking", "title": "브릿지 순위", "reveal": "countup" },
+    { "type": "random", "title": "행운상", "reveal": "slot", "count": 3 },
+    { "type": "individual_ranking", "title": "개인 순위", "reveal": "countup", "top": 5 },
+    { "type": "special", "metric": "middle", "title": "뉴평 중간값", "reveal": "card" }
+  ]
+}
+```
+
+생략하면 위 구성을 쓴다. `"awards": { "preset": "team_only" }` 또는 `"quick"`으로 미리 만든 구성을 고를 수도 있다.
+순서·연출·항목은 관리자 화면 **④ 시상** 탭에서 당일에도 바꿀 수 있다 (시상을 시작하기 전까지).
+
+| type | 내용 | 추가 필드 |
+|------|------|-----------|
+| `individual_ranking` | 개인 순위 | `top`(기본 3), `scope`: `all` / `group`(학년별) / `unit`(브릿지별) |
+| `unit_ranking` | 브릿지 순위 | `top`, `scope`: `all` / `group`(학년별로 나눠서) |
+| `group_ranking` | 학년 순위 | `top` |
+| `special` | 특별상 한 명 | `metric`: `middle`(정중앙) / `rank`(+`rank` 등수) / `fastest`(평균 응답 최단) / `chattiest`(채팅 최다) / `round_best`(+`round` 번호) |
+| `random` | 추첨 | `count`(인원). 공개할 때 서버가 중복 없이 뽑는다 |
+
+| reveal | 연출 | 쓸 수 있는 type |
+|--------|------|-----------------|
+| `countup` | 하위부터 한 줄씩 공개 | 순위 |
+| `podium` | 3등 → 2등 → 1등 단상 | 순위 |
+| `bar_race` | 막대가 동시에 차오름 | 팀 순위 |
+| `scroll` | 전체 목록 자동 스크롤 | 순위 |
+| `card` | 한 명을 카드로 공개 | 특별상 |
+| `slot` | 슬롯머신 | 추첨 |
 
 ---
 
@@ -25,33 +117,38 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 1,
-  "theme": "라운드 제목",
-  "gameMode": "게임모드",
+  "theme": "성경 상식",
+  "gameMode": "multiple_choice",
+  "points": 100,
+  "penalty": 50,
+  "standingsAfter": true,
   "questions": [ /* 문제 배열 */ ]
 }
 ```
 
-| 필드 | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| `roundNumber` | number | ✅ | 라운드 번호 (1부터 순서대로) |
-| `theme` | string | ✅ | 라운드 제목 (화면에 표시됨) |
-| `gameMode` | string | ✅ | 아래 7가지 중 하나 |
-| `questions` | array | ✅ | 문제 목록 |
+| 필드 | 필수 | 설명 |
+|------|------|------|
+| `theme` | — | 라운드 제목 (화면에 표시) |
+| `gameMode` | ✅ | 아래 11가지 중 하나 |
+| `points`, `penalty` | — | 이 라운드 문제의 점수·감점 (문제에 따로 적으면 그쪽이 우선) |
+| `standingsAfter` | — | `true`면 라운드가 끝날 때 개인 집계를 자동으로 띄운다 |
+| `questions` | ✅ | 문제 목록 |
+
+라운드 번호는 배열 순서대로 매겨진다 (`roundNumber`는 적어도 무시된다).
 
 ### 게임 모드 목록
 
 | gameMode 값 | 이름 | 설명 |
 |------------|------|------|
-| `multiple_choice` | 객관식 | 4지선다 버튼 |
+| `multiple_choice` | 객관식 | 보기 버튼 |
 | `short_answer` | 단답형 | 텍스트 직접 입력 |
 | `consonant` | 초성 퀴즈 | 초성 힌트 보고 단어 맞추기 |
 | `word_guess` | 빈칸 맞추기 | `_` 자리에 들어갈 단어 입력 |
 | `image_quiz` | 이미지 퀴즈 | 이미지 보고 정답 입력 |
 | `audio_quiz` | 오디오 퀴즈 | 음악/소리 듣고 정답 입력 |
 | `reaction` | 반응 게임 | 신호 뜨면 빠르게 누르기 |
-| `image_multiple_choice` | 이미지 객관식 | 이미지 보고 4지선다 |
-| `image_memory` | 이미지 기억력 | 이미지를 잠깐 보여준 뒤 객관식 출제 |
+| `image_multiple_choice` | 이미지 객관식 | 이미지 보고 보기 선택 |
+| `image_memory` | 이미지 기억력 | 이미지를 보며 객관식 |
 | `emoji_find` | 이모지 사람 찾기 | 같은 이모지 세트 가진 사람의 코드 입력 |
 | `long_typing` | 장문 타이핑 | 화면의 긴 글을 따라 입력 |
 
@@ -59,19 +156,22 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ## 문제 공통 필드
 
-모든 게임 모드에서 사용 가능한 필드:
+| 필드 | 필수 | 기본값 | 설명 |
+|------|------|--------|------|
+| `content` | ✅ | — | 문제 내용 (프로젝터에 크게 표시) |
+| `correctAnswer` | ✅ | — | 정답 (대소문자·띄어쓰기 무시하고 비교). 반응 게임·이모지 찾기는 필요 없다 |
+| `timeLimit` | — | `20` | 제한 시간(초). 제출 마감으로만 쓰인다 |
+| `points` | — | 라운드/세트 값 | 정답 점수 |
+| `penalty` | — | 라운드/세트 값 | 오답 감점 |
 
-| 필드 | 타입 | 필수 | 기본값 | 설명 |
-|------|------|------|--------|------|
-| `content` | string | ✅ | — | 문제 내용 (프로젝터 화면에 크게 표시) |
-| `correctAnswer` | string | ✅ | — | 정답 (대소문자·띄어쓰기 무시하고 비교) |
-| `timeLimit` | number | — | `20` | 제한 시간 (초) |
-| `maxScore` | number | — | `1000` | 정답 시 최대 획득 점수 |
-| `penalty` | number | — | `200` | 오답 시 최대 감점 |
+### 모드별로 달라진 점
 
-> **점수 계산 방식**  
-> - 정답: `maxScore × (0.3 + 빠를수록 × 0.7)` → 빨리 누를수록 고득점  
-> - 오답: `-penalty × (0.5 + 빠를수록 × 0.5)` → 빨리 틀릴수록 감점 큼
+| 모드 | 내용 |
+|------|------|
+| `reaction` | 빠른 순으로 `rankPoints` 점수(예: `[300, 200, 100]`), 순위 밖은 `points`. 신호 전에 누르면 실격(0점). `correctAnswer`는 필요 없다 |
+| `long_typing` | 정확도가 `passAccuracy`(기본 `0.9`) 이상이면 `points`, 아니면 0점. 감점 없음 |
+| `emoji_find` | 같은 조의 코드를 내면 `points`. 틀려도 감점 없이 다시 시도. `correctAnswer`는 필요 없다 |
+| `image_memory` | 이미지를 제한 시간 내내 보여주며 객관식으로 답한다. `memorizeDuration`은 쓰지 않는다 |
 
 ---
 
@@ -86,7 +186,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 1,
   "theme": "성경 상식",
   "gameMode": "multiple_choice",
   "questions": [
@@ -95,7 +194,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "choices": ["예루살렘", "베들레헴", "나사렛", "갈릴리"],
       "correctAnswer": "베들레헴",
       "timeLimit": 15,
-      "maxScore": 1000,
+      "points": 1000,
       "penalty": 200
     }
   ]
@@ -116,7 +215,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 2,
   "theme": "노래 가사 맞추기",
   "gameMode": "short_answer",
   "questions": [
@@ -124,7 +222,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "content": "\"Amazing ___\" 빈칸에 들어갈 단어는?",
       "correctAnswer": "Grace",
       "timeLimit": 20,
-      "maxScore": 800
+      "points": 800
     },
     {
       "content": "신약성경의 첫 번째 책 이름은?",
@@ -146,7 +244,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 3,
   "theme": "초성 맞추기",
   "gameMode": "consonant",
   "questions": [
@@ -155,14 +252,14 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "consonantHint": "ㅇㅅ",
       "correctAnswer": "예수",
       "timeLimit": 20,
-      "maxScore": 700
+      "points": 700
     },
     {
       "content": "이번엔 조금 어렵습니다",
       "consonantHint": "ㅅㄱㅈㅅ",
       "correctAnswer": "성경전서",
       "timeLimit": 25,
-      "maxScore": 1000
+      "points": 1000
     }
   ]
 }
@@ -183,7 +280,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 4,
   "theme": "가사 빈칸 채우기",
   "gameMode": "word_guess",
   "questions": [
@@ -191,13 +287,13 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "content": "주 _ 에 있는 기쁨은",
       "correctAnswer": "안",
       "timeLimit": 15,
-      "maxScore": 600
+      "points": 600
     },
     {
       "content": "예 _ 그 _ 도",
       "correctAnswer": "수스",
       "timeLimit": 20,
-      "maxScore": 800
+      "points": 800
     }
   ]
 }
@@ -216,7 +312,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 5,
   "theme": "인물 맞추기",
   "gameMode": "image_quiz",
   "questions": [
@@ -225,7 +320,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "imageUrl": "moses.jpg",
       "correctAnswer": "모세",
       "timeLimit": 20,
-      "maxScore": 1000
+      "points": 1000
     },
     {
       "content": "이 장소는 어디일까요?",
@@ -260,7 +355,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 6,
   "theme": "찬양 제목 맞추기",
   "gameMode": "audio_quiz",
   "questions": [
@@ -269,7 +363,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "audioUrl": "amazing_grace.mp3",
       "correctAnswer": "Amazing Grace",
       "timeLimit": 30,
-      "maxScore": 1000
+      "points": 1000
     },
     {
       "content": "어떤 찬양 가수의 노래일까요?",
@@ -306,27 +400,24 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 7,
   "theme": "반응속도 대결",
   "gameMode": "reaction",
   "questions": [
     {
       "content": "노란 버튼이 뜨면 바로 누르세요!",
-      "correctAnswer": "__reaction__",
       "timeLimit": 5,
-      "maxScore": 1000
+      "points": 1000
     },
     {
       "content": "2라운드! 더 빠르게!",
-      "correctAnswer": "__reaction__",
       "timeLimit": 5,
-      "maxScore": 500
+      "points": 500
     }
   ]
 }
 ```
 
-> `correctAnswer`는 반드시 `"__reaction__"` 고정값.  
+> `correctAnswer`는 적지 않는다. `rankPoints`로 순위별 점수를 줄 수 있다 (예: `"rankPoints": [300, 200, 100]`).
 > `timeLimit`은 신호 표시 후 입력 대기 시간 (5초 권장).  
 > 점수는 빠른 순서대로 차등 배분 (1등: maxScore, 꼴등: 최소점수).
 
@@ -339,7 +430,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 8,
   "theme": "이미지 객관식",
   "gameMode": "image_multiple_choice",
   "questions": [
@@ -349,7 +439,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "choices": ["모세", "아브라함", "다윗", "엘리야"],
       "correctAnswer": "모세",
       "timeLimit": 20,
-      "maxScore": 1000
+      "points": 1000
     }
   ]
 }
@@ -372,7 +462,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 9,
   "theme": "이미지 기억력 테스트",
   "gameMode": "image_memory",
   "questions": [
@@ -382,7 +471,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "choices": ["3명", "4명", "5명", "6명"],
       "correctAnswer": "5명",
       "timeLimit": 15,
-      "maxScore": 1000
+      "points": 1000
     },
     {
       "content": "두 이미지에서 달라진 부분은?",
@@ -390,7 +479,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "choices": ["하늘 색", "나무 위치", "사람 수", "건물 모양"],
       "correctAnswer": "사람 수",
       "timeLimit": 20,
-      "maxScore": 1000
+      "points": 1000
     }
   ]
 }
@@ -412,7 +501,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 
 ```json
 {
-  "roundNumber": 10,
   "theme": "이모지 사람 찾기",
   "gameMode": "emoji_find",
   "questions": [
@@ -421,9 +509,8 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "emojiPool": ["🐶", "🐱", "🦁", "🐰", "🐻", "🦊", "🚗", "🚀", "🏠", "🌳", "⚽", "🎸", "🍎", "🌙", "⭐", "🍩"],
       "setSize": 3,
       "groupSize": 2,
-      "correctAnswer": "__emoji_find__",
       "timeLimit": 60,
-      "maxScore": 1000
+      "points": 1000
     }
   ]
 }
@@ -434,7 +521,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 | `emojiPool` | array(string) | ✅ | — | 세트를 구성할 이모지 풀 (넉넉히, 12개 이상 권장) |
 | `setSize` | number | — | `3` | 한 사람에게 보여줄 이모지 개수 |
 | `groupSize` | number | — | `2` | 같은 세트를 공유하는 인원(2~3). 홀수 잔여 1명은 직전 그룹에 합쳐 3명이 됩니다 |
-| `correctAnswer` | string | ✅ | — | 반드시 `"__emoji_find__"` 고정값 |
 
 > 권장 인원 4명 이상(최소 2명). 인원이 적으면 매칭이 어려울 수 있습니다.  
 > 코드는 참가자별로 자동 생성되며, 서버가 같은 그룹 여부로 정답을 판정합니다.
@@ -444,11 +530,10 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 ### 11. 장문 타이핑 `long_typing`
 
 성경 말씀 같은 **긴 문장을 큰 화면에 띄우고**, 참가자가 따라 입력합니다.  
-**원문은 프로젝터에만** 표시되고(휴대폰엔 입력창만), 원문과의 **일치도(정확도) + 속도**로 채점합니다.
+**원문은 프로젝터에만** 표시되고(휴대폰엔 입력창만), 원문과의 **일치도(정확도)** 로 채점합니다.
 
 ```json
 {
-  "roundNumber": 11,
   "theme": "말씀 타이핑",
   "gameMode": "long_typing",
   "questions": [
@@ -456,8 +541,8 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       "content": "큰 화면의 말씀을 정확하게 따라 입력하세요",
       "correctAnswer": "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
       "timeLimit": 90,
-      "maxScore": 1000,
-      "passThreshold": 0.9
+      "points": 1000,
+      "passAccuracy": 0.9
     }
   ]
 }
@@ -466,9 +551,9 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
 | 추가 필드 | 타입 | 필수 | 기본값 | 설명 |
 |---------|------|------|--------|------|
 | `correctAnswer` | string | ✅ | — | 따라 칠 원문 전체 (프로젝터에 표시됨) |
-| `passThreshold` | number | — | `0.9` | "정답"으로 집계할 최소 일치도 (점수는 일치도 비례 부분점수) |
+| `passAccuracy` | number | — | `0.9` | "정답"으로 집계할 최소 일치도 (점수는 일치도 비례 부분점수) |
 
-> 점수: `maxScore × 정확도 × (0.7 + 0.3 × 속도)`. 정확하고 빠를수록 고득점, 정확도 0이면 0점(감점 없음).  
+> 점수: 정확도가 `passAccuracy` 이상이면 `points`, 아니면 0점 (감점 없음). 속도는 점수에 영향이 없다.
 > 긴 글은 `timeLimit`을 넉넉히(60~120초) 주세요.
 
 ---
@@ -482,7 +567,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
   "sessionName": "2025 여름 수련회 레크레이션",
   "rounds": [
     {
-      "roundNumber": 1,
       "theme": "워밍업 - 객관식",
       "gameMode": "multiple_choice",
       "questions": [
@@ -491,7 +575,7 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
           "choices": ["요한복음 3:16", "시편 23편", "로마서 8:28", "빌립보서 4:13"],
           "correctAnswer": "로마서 8:28",
           "timeLimit": 15,
-          "maxScore": 500
+          "points": 500
         },
         {
           "content": "우리 교회가 창립된 해는?",
@@ -502,7 +586,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       ]
     },
     {
-      "roundNumber": 2,
       "theme": "단답형",
       "gameMode": "short_answer",
       "questions": [
@@ -510,12 +593,11 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
           "content": "신약성경은 총 몇 권인가요?",
           "correctAnswer": "27",
           "timeLimit": 15,
-          "maxScore": 800
+          "points": 800
         }
       ]
     },
     {
-      "roundNumber": 3,
       "theme": "초성 퀴즈",
       "gameMode": "consonant",
       "questions": [
@@ -524,12 +606,11 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
           "consonantHint": "ㅎㄴㄴ",
           "correctAnswer": "하나님",
           "timeLimit": 20,
-          "maxScore": 700
+          "points": 700
         }
       ]
     },
     {
-      "roundNumber": 4,
       "theme": "빈칸 채우기",
       "gameMode": "word_guess",
       "questions": [
@@ -541,7 +622,6 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
       ]
     },
     {
-      "roundNumber": 5,
       "theme": "이미지 퀴즈",
       "gameMode": "image_quiz",
       "questions": [
@@ -550,12 +630,11 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
           "imageUrl": "jordan_river.jpg",
           "correctAnswer": "요단강",
           "timeLimit": 20,
-          "maxScore": 1000
+          "points": 1000
         }
       ]
     },
     {
-      "roundNumber": 6,
       "theme": "찬양 맞추기",
       "gameMode": "audio_quiz",
       "questions": [
@@ -564,26 +643,23 @@ Admin 패널 → "파일 업로드" 버튼으로 불러오면 바로 사용 가�
           "audioUrl": "worship_clip.mp3",
           "correctAnswer": "주님 한 분만으로",
           "timeLimit": 30,
-          "maxScore": 1000
+          "points": 1000
         }
       ]
     },
     {
-      "roundNumber": 7,
       "theme": "최후의 반응 대결",
       "gameMode": "reaction",
       "questions": [
         {
           "content": "신호가 뜨면 바로 누르세요!",
-          "correctAnswer": "__reaction__",
           "timeLimit": 5,
-          "maxScore": 1000
+          "points": 1000
         },
         {
           "content": "마지막 기회!",
-          "correctAnswer": "__reaction__",
           "timeLimit": 5,
-          "maxScore": 1000
+          "points": 1000
         }
       ]
     }
@@ -631,7 +707,6 @@ newcreation/
 |------|-----------|
 | `choices`를 3개 또는 5개 입력 | 반드시 4개 |
 | `correctAnswer`가 `choices`에 없음 | `choices` 중 하나와 정확히 일치해야 함 |
-| `reaction`에 다른 `correctAnswer` 입력 | 반드시 `"__reaction__"` |
 | `emoji_find`에 다른 `correctAnswer` 입력 | 반드시 `"__emoji_find__"` |
 | `consonantHint`에 글자 포함 | 자음(초성)만 입력: `ㅅㅇ` (서울) |
 | 이미지 파일 경로 누락 | `/media/` 폴더에 파일 있는지 확인 후 파일명만 입력 |
@@ -643,8 +718,11 @@ newcreation/
 
 ## 샘플 파일
 
-저장소 루트의 **`sample_quiz_set.json`** 은 7개 게임 모드를 모두 담은 실전용 샘플러입니다.
-Admin 패널 → "📂 JSON 파일 선택" 으로 그대로 업로드해 테스트하거나, 복사해서 실제 문제로 수정해 사용하세요.
+- **`sample_quiz_set_v2.json`** — 새 형식 예시 (점수 기본값, 학년·브릿지, 시상 세트, 순위 점수가 있는 반응 게임).
+- **`sample_quiz_set.json`** — 11개 게임 모드를 모두 담은 기존 형식 샘플. 그대로 올릴 수 있다 (`maxScore`는 `points`로 읽고, 팀 설정이 없어 소속은 자유 입력).
 
-- 이미지 퀴즈는 `client/public/media/sample_image_1.svg`, `sample_image_2.svg` 플레이스홀더를 참조합니다 → 실제 사진으로 교체하세요.
-- 오디오 퀴즈(`sample_audio_1.mp3`)는 음원 파일을 직접 `client/public/media/` 에 추가해야 재생됩니다.
+관리자 화면 **① 준비 → 📁 JSON 올리기**로 올려 테스트하거나, 복사해서 실제 문제로 고쳐 쓴다. **🎯 연습 세트** 버튼은 내장된 연습 문제를 바로 올린다.
+
+- 이미지 퀴즈는 `client/public/media/sample_image_1.svg`, `sample_image_2.svg` 플레이스홀더를 참조한다 → 실제 사진으로 교체.
+- 오디오 퀴즈(`sample_audio_1.mp3`)는 음원 파일을 `client/public/media/`에 넣어야 재생된다.
+- 미디어는 주소(`https://…`)로도 지정할 수 있다. 서버에 Supabase Storage가 연결돼 있으면 관리자 **③ 표시 설정**에서 배경을 올릴 수 있다.

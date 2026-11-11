@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-# server는 ../shared 를 상대경로로 import함
+# server 는 ../../shared 를 상대경로로 import 한다
 # /app/shared + /app/server 구조로 배치
 WORKDIR /app
 COPY shared/ ./shared/
@@ -14,4 +14,4 @@ RUN npm install --omit=dev
 COPY server/ ./
 
 EXPOSE 3001
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]

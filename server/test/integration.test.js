@@ -157,6 +157,9 @@ describe('한 판 진행', () => {
     const results = [];
     p1.on(E.PLAYER_RESULT, (r) => results.push(r));
     expect(await p1.ask(E.PLAYER_ANSWER, { answer: '창세기' })).toMatchObject({ ok: true, isCorrect: true, delta: 100, score: 100 });
+    // 제출하면 본인 화면이 바로 '제출 완료'로 바뀐다 (문제 마감을 기다리지 않음)
+    expect((await until(p1, (s) => s.me?.answered)).me.result).toMatchObject({ isCorrect: true, delta: 100 });
+    expect(p1.last().phase).toBe(PHASES.QUESTION_OPEN);
     expect(await p2.ask(E.PLAYER_ANSWER, { answer: '시편' })).toMatchObject({ ok: true, isCorrect: false, delta: -50 });
     expect(results).toEqual([expect.objectContaining({ isCorrect: true, delta: 100 })]);
 

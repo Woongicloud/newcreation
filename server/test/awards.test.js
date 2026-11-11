@@ -146,3 +146,24 @@ describe('시상 진행', () => {
     expect(viewFor(room, ROLES.DISPLAY)).toMatchObject({ showMain: true, phase: PHASES.AWARDS });
   });
 });
+
+describe('시상 세트 편집', () => {
+  it('시상 시작 전에는 바꿀 수 있고, 종료 뒤에 바꾸면 결과를 다시 계산한다', async () => {
+    const { validateAwards } = await import('../../shared/quizSchema.js');
+    const set = makeSet({ rounds: [{ gameMode: 'multiple_choice', questions: [mc()] }] });
+    const { room, ids } = makeRoom({ set });
+    const ctx = { teams: set.teams, roundCount: 1 };
+    expect(validateAwards([{ type: 'nope' }], ctx).ok).toBe(false);
+    expect(validateAwards('x', ctx).ok).toBe(false);
+
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    ids.forEach((id) => room.submitAnswer(id, 'a'));
+    cmd(room, C.END_GAME);
+    expect(room.awards.items).toHaveLength(4);
+    const quick = validateAwards([{ type: 'individual_ranking', title: '개인', reveal: 'podium', top: 3 }], ctx);
+    expect(room.setAwards(quick.awards).ok).toBe(true);
+    expect(room.awards.items.map((i) => [i.title, i.reveal, i.steps])).toEqual([['개인', 'podium', 3]]);
+    cmd(room, C.NEXT);
+    expect(room.setAwards(quick.awards).ok).toBe(false); // 시상 시작 후
+  });
+});

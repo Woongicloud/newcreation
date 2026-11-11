@@ -53,6 +53,7 @@ export const EVENTS = {
   ADMIN_CREATE_ROOM: 'admin:create_room',
   ADMIN_LOAD_SET: 'admin:load_set',       // { roomCode, set }
   ADMIN_SETTINGS: 'admin:settings',       // { roomCode, patch }
+  ADMIN_SET_AWARDS: 'admin:set_awards',   // { roomCode, items }
   ADMIN_UPDATE_PLAYER: 'admin:update_player', // { roomCode, playerId, name?, group?, unit? }
   ADMIN_REMOVE_PLAYER: 'admin:remove_player', // { roomCode, playerId }
   ADMIN_HOST_TOKEN: 'admin:host_token',   // { roomCode }
