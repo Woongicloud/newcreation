@@ -1,80 +1,86 @@
 -- ============================================================
--- 실시간 레크레이션 게임 시스템 DB 스키마
--- Supabase SQL Editor에서 실행
+-- NewCreation v2 스키마
+-- Supabase SQL Editor 에서 실행.
+--
+-- 주의: v1 테이블을 지우고 새로 만든다 (기존 데이터는 이관하지 않음).
+--       v1 스키마는 supabase/legacy/schema_v1.sql 에 보관.
 -- ============================================================
 
--- 게임 세션
-CREATE TABLE IF NOT EXISTS sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  room_code VARCHAR(6) UNIQUE NOT NULL,
-  status VARCHAR(20) DEFAULT 'waiting',  -- waiting | playing | finished
-  current_round INT DEFAULT 0,
-  current_question INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+DROP TABLE IF EXISTS answers CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
+DROP TABLE IF EXISTS rounds CASCADE;
+DROP TABLE IF EXISTS score_events CASCADE;
+DROP TABLE IF EXISTS chat_logs CASCADE;
+DROP TABLE IF EXISTS players CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+
+-- 방(게임 세션). 문제 세트와 진행 상태를 통째로 담는다.
+CREATE TABLE sessions (
+  id            UUID PRIMARY KEY,
+  room_code     VARCHAR(6) NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'lobby',  -- 진행 단계(lobby … awards) 또는 closed
+  session_name  TEXT,
+  quiz_set      JSONB,   -- 검증·정규화된 문제 세트 (문제, 팀 명단, 시상 세트)
+  settings      JSONB,   -- 표시 설정 (채팅 폰트, 테마, 배경)
+  state         JSONB,   -- 진행 상태 스냅샷 — 서버 재시작 시 이것으로 복구
+  awards_result JSONB,   -- 게임 종료 시 계산한 시상 결과
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 방 코드는 열려 있는 방끼리만 겹치지 않으면 된다
+CREATE UNIQUE INDEX idx_sessions_open_room_code ON sessions(room_code) WHERE status <> 'closed';
+CREATE INDEX idx_sessions_created ON sessions(created_at);
 
 -- 참가자
-CREATE TABLE IF NOT EXISTS players (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-  name VARCHAR(20) NOT NULL,
-  class_name VARCHAR(10) NOT NULL,
-  score INT DEFAULT 0,
-  socket_id VARCHAR(50),
-  is_online BOOLEAN DEFAULT TRUE,
-  joined_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE players (
+  id                UUID PRIMARY KEY,
+  session_id        UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  name              VARCHAR(20) NOT NULL,
+  group_name        VARCHAR(20),   -- 학년
+  unit_name         VARCHAR(20),   -- 브릿지
+  score             INT NOT NULL DEFAULT 0,
+  total_response_ms BIGINT NOT NULL DEFAULT 0,  -- 동점자 순위 결정용
+  submit_count      INT NOT NULL DEFAULT 0,
+  chat_count        INT NOT NULL DEFAULT 0,
+  joined_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE INDEX idx_players_session ON players(session_id);
 
--- 라운드
-CREATE TABLE IF NOT EXISTS rounds (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-  round_number INT NOT NULL,
-  theme VARCHAR(50),
-  game_mode VARCHAR(30) NOT NULL  -- multiple_choice | short_answer | consonant | word_guess | image_quiz | reaction
+-- 점수 기록. raw_delta 는 규칙상 점수, applied_delta 는 손실 한도를 적용해 실제 반영된 점수.
+CREATE TABLE score_events (
+  id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  session_id    UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  player_id     UUID NOT NULL,
+  round_idx     INT NOT NULL,
+  question_idx  INT NOT NULL,
+  answer        TEXT,
+  is_correct    BOOLEAN,
+  raw_delta     INT NOT NULL,
+  applied_delta INT NOT NULL,
+  response_ms   INT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- 문제
-CREATE TABLE IF NOT EXISTS questions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  round_id UUID REFERENCES rounds(id) ON DELETE CASCADE,
-  question_number INT NOT NULL,
-  content TEXT NOT NULL,
-  image_url TEXT,
-  audio_url TEXT,
-  consonant_hint VARCHAR(20),
-  correct_answer TEXT NOT NULL,
-  choices JSONB,                   -- 객관식: ["①A","②B","③C","④D"]
-  time_limit INT DEFAULT 20,
-  max_score INT DEFAULT 1000,
-  penalty INT DEFAULT 200
-);
-
--- 응답
-CREATE TABLE IF NOT EXISTS answers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  question_id UUID REFERENCES questions(id) ON DELETE CASCADE,
-  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  answer TEXT NOT NULL,
-  is_correct BOOLEAN,
-  response_time_ms INT,
-  score_delta INT,
-  submitted_at TIMESTAMPTZ DEFAULT NOW()
-);
+CREATE INDEX idx_score_events_session_round ON score_events(session_id, round_idx);
+CREATE INDEX idx_score_events_player ON score_events(player_id);
 
 -- 채팅
-CREATE TABLE IF NOT EXISTS chat_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-  message TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE chat_logs (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  session_id  UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  player_id   UUID,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE INDEX idx_chat_session ON chat_logs(session_id);
 
--- 인덱스
-CREATE INDEX IF NOT EXISTS idx_players_session ON players(session_id);
-CREATE INDEX IF NOT EXISTS idx_players_socket ON players(socket_id);
-CREATE INDEX IF NOT EXISTS idx_rounds_session ON rounds(session_id);
-CREATE INDEX IF NOT EXISTS idx_questions_round ON questions(round_id);
-CREATE INDEX IF NOT EXISTS idx_answers_question ON answers(question_id);
-CREATE INDEX IF NOT EXISTS idx_answers_player ON answers(player_id);
-CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_logs(session_id);
+-- 서버(service_role 키)만 읽고 쓴다. 정책을 두지 않아 브라우저의 anon 키로는 접근할 수 없다.
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE players ENABLE ROW LEVEL SECURITY;
+ALTER TABLE score_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_logs ENABLE ROW LEVEL SECURITY;
+
+-- 미디어 저장소 (배경, 문제용 이미지·오디오). 읽기는 공개, 올리기는 서버가 발급한 서명 URL 로만.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('media', 'media', true)
+ON CONFLICT (id) DO NOTHING;

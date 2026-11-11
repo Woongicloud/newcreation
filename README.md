@@ -3,6 +3,10 @@
 교회·단체 행사용 실시간 멀티플레이어 퀴즈 게임.  
 스마트폰 참가자 + PC 진행자 + 프로젝터 Display 3-way 구조.
 
+> **v2 개편 진행 중** — 계획은 [docs/REVAMP_PLAN.md](docs/REVAMP_PLAN.md), 프로토콜은 [docs/PROTOCOL.md](docs/PROTOCOL.md).
+> 새 서버는 `server/src/`에 있고(`npm run dev:server:v2`, 테스트는 `npm test`), 화면은 아직 기존 서버(`server/index.js`)에 붙어 있다.
+> `supabase/schema.sql`은 v2 스키마로 바뀌었다. 기존 서버용 스키마는 `supabase/legacy/schema_v1.sql`.
+
 ## 기술 스택
 
 | 구분 | 기술 |
@@ -24,7 +28,7 @@ npm run install:all
 
 ### 2. Supabase 스키마 적용
 
-[Supabase Dashboard](https://supabase.com) → SQL Editor에서 `supabase/schema.sql` 내용 실행.
+[Supabase Dashboard](https://supabase.com) → SQL Editor에서 스키마 실행. v2 서버는 `supabase/schema.sql`, 기존 서버는 `supabase/legacy/schema_v1.sql`. (v2 스키마는 기존 테이블을 지우고 새로 만든다)
 
 ### 3. 환경 변수 설정
 
