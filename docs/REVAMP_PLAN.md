@@ -1,7 +1,7 @@
 # NewCreation 종합 개편 플랜 (v2)
 
 > 상태: 초안 · 작성일 2026-11-11
-> 범위: 진행자 리모트 추가, 중간 개인 집계, 관리자 표시 설정, 포인트 체계 간소화
+> 범위: 진행자 리모트 추가, 중간 개인 집계, 관리자 표시 설정, 포인트 체계 간소화, 학년·브릿지 팀 구성, 최종 시상 세트
 
 ## 1. 개편 방향 요약
 
@@ -9,7 +9,7 @@
 
 | 화면 | 경로 | 기기 | 역할 |
 |---|---|---|---|
-| 참가자 | `/` `/lobby` `/game` | 개인 폰 | 답안 입력, 채팅, 내 점수·순위 확인 |
+| 참가자 | `/` `/lobby` `/game` | 개인 폰 | 이름·학년·브릿지 등록, 답안 입력, 채팅, 내 점수·순위 확인 |
 | Display | `/display` | 프로젝터 | 문제·타이머·집계·시상 송출 |
 | 관리자 | `/admin` | PC (음향/방송석) | 방 생성, 문제 세트 업로드, 표시 설정, 모니터링, 시상 |
 | **진행자 리모트 (신규)** | `/host` | 진행자 폰 (강단) | 게임 순서 진행, 정답 공개, 집계 송출 |
@@ -115,6 +115,7 @@ socket.emit('host:command', { type: 'next', step: 17 })
   - 각 줄: 순위 · 이름(반) · 누적 점수 · 직전 집계 대비 증감 · 순위 변동(▲▼)
 - **참가자 폰**: 집계가 떠 있는 동안 본인 순위·점수·증감을 크게 보여준다.
 - **집계 범위**: 누적(기본) / 이번 라운드만 — 진행자가 전환.
+- **집계 단위**: 개인(기본) / 학년별 / 브릿지별 — 진행자가 전환 (→ 3.5).
 - 서버는 집계 송출 시점의 점수를 기록해 다음 집계의 증감·순위 변동 계산에 쓴다.
 
 ### 3.3 관리자 페이지 — 표시 설정
@@ -185,14 +186,86 @@ socket.emit('host:command', { type: 'next', step: 17 })
 - 기존 세트(`maxScore`/`penalty`)는 `maxScore → points`로 읽어 그대로 업로드되게 하고, 변환 안내를 띄운다.
 - `quiz_set_guide.md`를 새 포맷으로 다시 쓴다.
 
+### 3.5 팀 구성 — 학년과 브릿지
+
+지금은 참가자가 `반` 하나만 고른다 (`shared/constants.js`의 `CLASS_OPTIONS`에 고정). 개편 후에는 **학년(팀) → 브릿지(학년 안의 반)** 2단계로 소속되고, 명단은 문제 세트 JSON에 함께 넣는다.
+
+```json
+{
+  "sessionName": "11월 레크레이션",
+  "teams": {
+    "labels": { "group": "학년", "unit": "브릿지" },
+    "groups": [
+      { "name": "중1", "units": ["브릿지 A", "브릿지 B"] },
+      { "name": "중2", "units": ["브릿지 A", "브릿지 B", "브릿지 C"] },
+      { "name": "고1", "units": ["브릿지 A"] }
+    ],
+    "teamScore": "average"
+  },
+  "rounds": [ … ]
+}
+```
+
+- **등록 화면**: 방 코드 입력 → 서버가 그 방의 명단을 내려줌 → 이름 입력 + 학년 선택 + (선택한 학년의) 브릿지 선택. 세 가지가 모두 채워져야 입장된다.
+- 명단은 방에 세트를 업로드한 시점에 확정되므로, **참가자 입장 전에 세트를 올려야 한다**. 관리자 "준비" 탭에서 세트가 없으면 QR을 띄우지 않는다.
+- `teams`가 없는 세트는 기존처럼 단일 소속 선택으로 동작한다 (기존 세트 호환).
+- 관리자 모니터링에서 참가자의 학년·브릿지를 수정할 수 있다 (잘못 고른 경우 대비).
+- **팀 점수 계산** `teamScore`: `average`(기본, 인원 차이 보정 — 현재 반별 순위와 동일) / `sum` / `top3`(상위 3명 평균).
+- 학년 점수와 브릿지 점수는 같은 방식으로 각각 계산한다. 브릿지 이름이 학년마다 겹쳐도 되도록 내부 키는 `학년/브릿지`로 둔다.
+
+### 3.6 최종 시상 — 시상 세트
+
+지금은 시상 항목(1등, 중간, 31등, 최단 응답, 최다 채팅, 랜덤, 반별 순위)과 보여주는 방식이 코드에 고정돼 있다 (`server/gameEngine.js`의 `computeAwardsFromSession`, AdminPage 시상 탭). 이를 **시상 세트**로 바꿔 JSON에서 항목·순서·연출을 지정한다.
+
+```json
+"awards": {
+  "preset": "standard",
+  "items": [
+    { "type": "unit_ranking",  "title": "브릿지 순위", "reveal": "countup",  "top": 5 },
+    { "type": "group_ranking", "title": "학년 순위",   "reveal": "bar_race" },
+    { "type": "special", "metric": "chattiest", "title": "말이 왜케 많아상", "reveal": "card" },
+    { "type": "special", "metric": "rank", "rank": 31, "title": "31등상", "reveal": "card" },
+    { "type": "random",  "title": "행운상", "reveal": "slot", "count": 2 },
+    { "type": "individual_ranking", "title": "개인 순위", "reveal": "podium", "top": 3 }
+  ]
+}
+```
+
+**시상 항목 종류 (`type`)**
+
+| type | 내용 |
+|---|---|
+| `individual_ranking` | 개인 순위 상위 N명. `scope`로 전체 / 학년 내 / 브릿지 내 지정 |
+| `group_ranking` | 학년 순위 |
+| `unit_ranking` | 브릿지 순위. `scope: "group"`이면 학년별로 나눠서 표시 |
+| `special` | 특별상 — `metric`: `rank`(지정 등수) · `middle`(정중앙) · `fastest`(평균 응답 최단) · `chattiest`(채팅 최다) · `round_best`(특정 라운드 1위) |
+| `random` | 추첨. `count`명, `scope`로 대상 범위 지정 |
+
+**보여주는 방식 (`reveal`)**
+
+| reveal | 연출 |
+|---|---|
+| `podium` | 3등 → 2등 → 1등 순서로 단상에 한 명씩 등장 |
+| `countup` | 하위부터 한 줄씩 위로 쌓으며 공개 |
+| `bar_race` | 팀별 막대가 동시에 차오르며 순위 확정 |
+| `card` | 수상자 한 명을 카드로 크게 공개 (현재 방식) |
+| `slot` | 슬롯머신 추첨 (현재 방식) |
+| `scroll` | 전체 목록 자동 스크롤 (3.2의 집계 화면 재사용) |
+
+- 항목마다 `reveal`을 따로 줄 수 있고, 생략하면 type별 기본 연출을 쓴다.
+- `preset`으로 미리 정의한 세트를 고를 수 있다: `standard`(개인+팀+특별상) / `team_only`(팀 순위만) / `quick`(개인 상위 3명만). `items`를 직접 쓰면 preset 대신 그것을 쓴다.
+- 관리자 시상 탭에서 세트를 불러온 뒤 **순서 변경·항목 끄기·연출 변경**을 당일에 할 수 있다.
+- 진행은 리모트의 주 버튼으로 한다: `다음 시상 항목` → `한 단계 공개`(podium의 3등→2등→1등 등) → `다음 시상 항목`. 진행자 화면에는 공개 전에 결과가 미리 보인다.
+- 수상 결과는 게임 종료 시점에 한 번 계산해 저장한다. 추첨(`random`)만 공개 시점에 서버가 뽑는다 (현재는 관리자 브라우저에서 뽑음).
+
 ## 4. 데이터 모델
 
 문제는 세션 단위로만 쓰이므로 `rounds`/`questions` 테이블을 없애고 세트 JSON을 통째로 저장한다.
 
 | 테이블 | 주요 컬럼 | 변경 |
 |---|---|---|
-| `sessions` | `room_code`, `status`, `quiz_set jsonb`, `settings jsonb`, `state jsonb` | 컬럼 추가 |
-| `players` | `session_id`, `name`, `class_name`, `score`, `total_response_ms` | 컬럼 추가 |
+| `sessions` | `room_code`, `status`, `quiz_set jsonb`(문제·팀 명단·시상 세트 포함), `settings jsonb`, `state jsonb`, `awards_result jsonb` | 컬럼 추가 |
+| `players` | `session_id`, `name`, `group_name`(학년), `unit_name`(브릿지), `score`, `total_response_ms` | `class_name`을 2개 컬럼으로 분리 |
 | `score_events` | `player_id`, `round_idx`, `question_idx`, `answer`, `is_correct`, `raw_delta`, `applied_delta`, `response_ms` | `answers` 대체 |
 | `chat_logs` | `session_id`, `player_id`, `message` | session_id 실제 기록 |
 
@@ -205,10 +278,10 @@ socket.emit('host:command', { type: 'next', step: 17 })
 | 단계 | 내용 | 완료 기준 |
 |---|---|---|
 | **0. 기반** | 공용 프로토콜(`shared/`) 정의, 스키마 v2, 테스트 환경(Vitest), 폴더 구조 정리 | 상태·명령·JSON 포맷이 문서와 타입으로 확정 |
-| **1. 서버 코어** | 상태 머신, 점수 엔진 v2(한도 포함), 토큰 인증, 상태 저장·복구 | 점수·상태 전환 단위 테스트 통과, 서버 재시작 후 방 복구 |
-| **2. 진행자 리모트 + 관리자** | `/host` 신규, `/admin` 탭 재구성, 진행자 QR, JSON 검증 | 폰 하나로 세트 전체를 끝까지 진행, 두 기기 동시 조작에도 건너뛰기 없음 |
-| **3. Display** | 테마 토큰화, 표시 설정 실시간 반영, 개인 집계 자동 스크롤, 채팅 폰트 조절 | 관리자에서 바꾼 설정이 즉시 반영, 100명 집계가 끊김 없이 스크롤 |
-| **4. 참가자** | 새 상태 프로토콜로 전환, 11개 모드 이식, 내 순위 화면 | 모든 모드가 새 점수 규칙으로 동작, 재접속 복구 |
+| **1. 서버 코어** | 상태 머신, 점수 엔진 v2(한도 포함), 팀 점수 집계, 시상 계산, 토큰 인증, 상태 저장·복구 | 점수·상태 전환 단위 테스트 통과, 서버 재시작 후 방 복구 |
+| **2. 진행자 리모트 + 관리자** | `/host` 신규, `/admin` 탭 재구성, 진행자 QR, JSON 검증(팀 명단·시상 세트 포함), 시상 세트 편집 | 폰 하나로 세트 전체를 시상까지 진행, 두 기기 동시 조작에도 건너뛰기 없음 |
+| **3. Display** | 테마 토큰화, 표시 설정 실시간 반영, 개인·팀 집계 자동 스크롤, 채팅 폰트 조절, 시상 연출 6종 | 관리자에서 바꾼 설정이 즉시 반영, 100명 집계가 끊김 없이 스크롤, 시상 세트 3종이 끝까지 재생 |
+| **4. 참가자** | 새 상태 프로토콜로 전환, 학년·브릿지 등록 화면, 11개 모드 이식, 내 순위 화면 | 모든 모드가 새 점수 규칙으로 동작, 재접속 복구 |
 | **5. 배포·리허설** | Vercel/Railway 재연결, 환경변수 정리, 가상 참가자 부하 테스트, 실기기 리허설 | 실제 기기 4종으로 샘플 세트 완주 |
 
 **배포**: 1–4단계는 로컬 개발로 진행하고, 5단계에서 Vercel(client)·Railway(server)를 재연결한다. `vercel.json`과 `Dockerfile`은 그대로 쓸 수 있다. 바뀌는 환경변수는 `VITE_ADMIN_PASSWORD` 삭제, 서버에 `TOKEN_SECRET` 추가.
@@ -216,17 +289,17 @@ socket.emit('host:command', { type: 'next', step: 17 })
 ### 폴더 구조 (목표)
 
 ```
-shared/      protocol.js(상태·명령·이벤트)  scoring.js  quizSchema.js
-server/      index.js  auth.js  rooms/(stateMachine, scoring, standings, persistence)  chat.js
+shared/      protocol.js(상태·명령·이벤트)  scoring.js  quizSchema.js(문제·팀·시상 세트 검증)
+server/      index.js  auth.js  rooms/(stateMachine, scoring, standings, teams, awards, persistence)  chat.js
 client/src/
   pages/     player/  display/  admin/  host/
-  features/  game-modes/  standings/  chat/  theme/  host-controls/
+  features/  game-modes/  standings/  awards/  chat/  theme/  host-controls/
   store/     roomStore.js(스냅샷 단일 스토어)
 ```
 
 ## 6. 확인이 필요한 사항
 
-진행 전에 정해져야 하는 것들이다. 답이 없으면 **기본안**으로 진행한다.
+진행 전에 정해져야 하는 것들이다. 답이 없으면 **기본안**으로 진행한다. 7–9번은 PR 코멘트(학년·브릿지, 시상 세트)를 반영하며 생긴 항목이다.
 
 1. **"구간별 최대 포인트 획득/손실"의 구간** — 기본안: 구간 = 라운드, 참가자 1인의 라운드 내 누적 획득·손실에 한도 적용. (다른 해석: 여러 라운드를 묶은 파트 단위, 또는 한 문제 안의 점수 단계)
 2. **개인 집계에 전원 표시 여부** — 기본안: 전원 표시. 하위권 노출이 부담되면 "상위 N명 + 본인 순위는 폰에서만" 옵션을 둔다.
@@ -234,3 +307,6 @@ client/src/
 4. **기존 DB 데이터** — 기본안: 보존하지 않고 새 스키마로 교체.
 5. **동시 참가 인원 규모** — 기본안: 100명 기준으로 부하 테스트.
 6. **배경 이미지/영상 관리 방식** — 기본안: 리포의 `client/public/media/`에 넣고 선택. 행사 당일 업로드가 필요하면 Supabase Storage 연동을 추가한다.
+7. **브릿지 명단의 범위** — 기본안: JSON에는 학년별 브릿지 이름만 넣고, 참가자가 직접 고른다. (다른 해석: 브릿지별 학생 이름까지 넣어 두고, 참가자는 명단에서 본인 이름을 고름 — 오입력은 없어지지만 명단에 없는 사람 처리가 필요)
+8. **팀 점수 계산 방식** — 기본안: 평균 (인원 차이 보정, 현재와 동일). 합계나 상위 3명 평균으로 바꿀 수 있다.
+9. **시상 세트 구성** — 기본안: `standard` 세트(브릿지 순위 → 학년 순위 → 특별상 → 추첨 → 개인 상위 3명). 이번 행사에 쓸 항목과 순서를 알려주면 기본 세트로 넣는다.
