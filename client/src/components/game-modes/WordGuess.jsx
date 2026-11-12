@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function WordGuess({ question, onSubmit, hasSubmitted, correctAnswer }) {
+export default function WordGuess({ question, onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   const [text, setText] = useState('');
 
   function handleSubmit(e) {
@@ -22,7 +22,7 @@ export default function WordGuess({ question, onSubmit, hasSubmitted, correctAns
 
       <input
         type="text"
-        value={text}
+        value={hasSubmitted && submittedAnswer != null ? submittedAnswer : text}
         onChange={(e) => setText(e.target.value)}
         disabled={hasSubmitted}
         placeholder="빈칸의 단어를 맞춰보세요"

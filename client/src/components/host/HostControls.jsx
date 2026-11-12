@@ -141,7 +141,7 @@ export default function HostControls({ compact = false }) {
         {standings ? (
           <button className={`${sub} !bg-sky-700`} onClick={() => send(C.HIDE_STANDINGS)}>집계 닫기</button>
         ) : (
-          <button className={sub} disabled={open || !state.hasSet} onClick={() => send(C.SHOW_STANDINGS, { scope: 'total' })}>📊 개인 집계</button>
+          <button className={sub} disabled={open || phase === PHASES.QUESTION_CLOSED || !state.hasSet} onClick={() => send(C.SHOW_STANDINGS, { scope: 'total' })}>📊 개인 집계</button>
         )}
         {open && timer?.paused
           ? <button className={`${sub} !bg-amber-700`} onClick={() => send(C.RESUME)}>▶ 재개</button>
@@ -152,7 +152,7 @@ export default function HostControls({ compact = false }) {
       {more && (
         <div className="grid grid-cols-2 gap-2">
           <button className={sub} disabled={!open} onClick={() => send(C.EXTEND_TIME, { seconds: 10 })}>+10초</button>
-          <button className={sub} disabled={open || !state.hasSet} onClick={() => send(C.SHOW_STANDINGS, { scope: 'round' })}>이번 라운드 집계</button>
+          <button className={sub} disabled={open || phase === PHASES.QUESTION_CLOSED || !state.hasSet} onClick={() => send(C.SHOW_STANDINGS, { scope: 'round' })}>이번 라운드 집계</button>
           <button className={sub} disabled={phase !== PHASES.QUESTION_OPEN && phase !== PHASES.QUESTION_CLOSED}
             onClick={() => ask('이 문제를 무효 처리하고 건너뜁니다.', () => send(C.SKIP))}>⏭ 문제 건너뛰기</button>
           <button className={sub} disabled={!state.hasSet || finished} onClick={() => setSheet(true)}>📋 순서표</button>

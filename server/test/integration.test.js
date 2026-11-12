@@ -156,12 +156,13 @@ describe('한 판 진행', () => {
 
     const results = [];
     p1.on(E.PLAYER_RESULT, (r) => results.push(r));
-    expect(await p1.ask(E.PLAYER_ANSWER, { answer: '창세기' })).toMatchObject({ ok: true, isCorrect: true, delta: 100, score: 100 });
-    // 제출하면 본인 화면이 바로 '제출 완료'로 바뀐다 (문제 마감을 기다리지 않음)
-    expect((await until(p1, (s) => s.me?.answered)).me.result).toMatchObject({ isCorrect: true, delta: 100 });
-    expect(p1.last().phase).toBe(PHASES.QUESTION_OPEN);
-    expect(await p2.ask(E.PLAYER_ANSWER, { answer: '시편' })).toMatchObject({ ok: true, isCorrect: false, delta: -50 });
-    expect(results).toEqual([expect.objectContaining({ isCorrect: true, delta: 100 })]);
+    // 제출 응답에는 정오답·점수가 없다 — 정답 공개 전까지 참가자 폰에 결과가 가지 않는다
+    expect(await p1.ask(E.PLAYER_ANSWER, { answer: '창세기' })).toEqual({ ok: true });
+    // 본인 화면은 바로 '제출 완료'로 바뀌고, 고른 답은 남지만 결과·점수 변화는 없다
+    const submitted = await until(p1, (s) => s.me?.answered);
+    expect(submitted.me).toMatchObject({ answer: '창세기', result: null, score: 0 });
+    expect(submitted.phase).toBe(PHASES.QUESTION_OPEN);
+    expect(await p2.ask(E.PLAYER_ANSWER, { answer: '시편' })).toEqual({ ok: true });
 
     // 모두 제출 → 마감. 정답은 진행자가 공개할 때 나간다
     const closed = await until(display, (s) => s.phase === PHASES.QUESTION_CLOSED);
@@ -172,6 +173,10 @@ describe('한 판 진행', () => {
     expect(reveal.question.correctAnswer).toBe('창세기');
     expect(reveal.stats).toMatchObject({ answered: 2, correct: 1, choiceCounts: [1, 0, 1, 0] });
     expect((await until(p2, (s) => s.phase === PHASES.QUESTION_REVEAL)).me).toMatchObject({ score: -50, rank: 2, result: { isCorrect: false, delta: -50 } });
+    // 마감 단계에서도 결과는 숨겨져 있었고, 공개되자 처음으로 받는다
+    expect(p2.states.filter((x) => x.phase === PHASES.QUESTION_CLOSED).every((x) => x.me.result === null && x.me.score === 0)).toBe(true);
+    expect((await until(p1, (s) => s.phase === PHASES.QUESTION_REVEAL)).me).toMatchObject({ score: 100, result: { isCorrect: true, delta: 100 } });
+    expect(results).toEqual([]); // 개인 결과 이벤트는 따로 오지 않는다
 
     // 집계 송출
     await host.ask(E.HOST_COMMAND, { type: C.SHOW_STANDINGS, step: reveal.step });

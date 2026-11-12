@@ -164,16 +164,21 @@ export function viewFor(room, role, playerId, ctx = buildContext(room)) {
     const c = room.current;
     const mine = c?.answers.get(p.id) || null;
     const emoji = c?.emoji?.assignments.get(p.id);
+    // 정답 공개 전에는 채점 결과와 이번 문제 점수를 숨긴다 — 옆 사람에게 정답이 새지 않도록
+    const revealed = room.phase === PHASES.QUESTION_REVEAL;
+    const hidden = c && !revealed && mine?.delta ? mine.delta : 0;
     view.me = {
       id: p.id,
       name: p.name,
       group: p.group,
       unit: p.unit,
-      score: p.score,
+      score: p.score - hidden,
       rank: ctx.rankById.get(p.id) ?? null,
       // 이모지 찾기는 맞힐 때까지 다시 낼 수 있으므로 정답을 찾았을 때만 제출 완료
       answered: c ? (c.emoji ? c.emoji.solved.has(p.id) : !!mine) : false,
-      result: mine ? {
+      // 본인이 낸 답 (새로고침해도 고른 보기·입력이 그대로 보이도록)
+      answer: mine && typeof mine.answer === 'string' ? mine.answer : null,
+      result: mine && revealed ? {
         isCorrect: mine.isCorrect, delta: mine.delta, accuracy: mine.accuracy,
         falseStart: mine.falseStart, rank: mine.rank, ms: mine.ms,
       } : null,

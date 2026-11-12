@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // 장문 타이핑 — 원문은 프로젝터에만 표시. 폰에는 입력창만.
-export default function LongTyping({ onSubmit, hasSubmitted, lastResult, timeExpired = false }) {
+export default function LongTyping({ onSubmit, hasSubmitted, lastResult, timeExpired = false, submittedAnswer }) {
   const [text, setText] = useState('');
   const [confirming, setConfirming] = useState(false);
 
@@ -53,7 +53,7 @@ export default function LongTyping({ onSubmit, hasSubmitted, lastResult, timeExp
         📺 화면의 말씀을 보고 <b>정확하게</b> 입력하세요
       </p>
       <textarea
-        value={text}
+        value={hasSubmitted && submittedAnswer != null ? submittedAnswer : text}
         onChange={(e) => setText(e.target.value)}
         disabled={hasSubmitted || timeExpired}
         rows={5}

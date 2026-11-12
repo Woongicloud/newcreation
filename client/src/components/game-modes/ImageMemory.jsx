@@ -2,7 +2,7 @@ import MultipleChoice from './MultipleChoice.jsx';
 
 // 이미지 기억력 — 제한시간 동안 이미지(세트)를 보면서 객관식으로 답변.
 // imageUrls(여러 장) 우선, 없으면 단일 imageUrl 을 사용.
-export default function ImageMemory({ question, onSubmit, hasSubmitted, correctAnswer }) {
+export default function ImageMemory({ question, onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   const images = question.imageUrls?.length
     ? question.imageUrls
     : (question.imageUrl ? [question.imageUrl] : []);
@@ -23,6 +23,7 @@ export default function ImageMemory({ question, onSubmit, hasSubmitted, correctA
         onSubmit={onSubmit}
         hasSubmitted={hasSubmitted}
         correctAnswer={correctAnswer}
+        submittedAnswer={submittedAnswer}
         compact
       />
     </div>
