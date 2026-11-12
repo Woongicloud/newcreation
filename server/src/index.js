@@ -1,6 +1,10 @@
 import { createPersistence } from './persistence/index.js';
 import { buildServer } from './app.js';
 
+// 처리하지 못한 오류로 행사 중에 서버가 내려가지 않게 한다
+process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e?.message || e));
+process.on('uncaughtException', (e) => console.error('[uncaughtException]', e?.stack || e));
+
 const persistence = await createPersistence();
 const server = await buildServer({ persistence });
 const PORT = process.env.PORT || 3001;

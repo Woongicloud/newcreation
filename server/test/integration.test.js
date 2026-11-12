@@ -226,3 +226,30 @@ describe('한 판 진행', () => {
     expect([...saved.players.values()].map((p) => p.name).sort()).toEqual(['김하늘', '이바다']);
   });
 });
+
+describe('DB 장애', () => {
+  it('시작할 때 DB 가 안 돼도 서버는 뜨고, 원인을 health 로 알려준다', async () => {
+    const broken = createMemoryPersistence();
+    broken.loadActive = async () => { throw new Error('[db] loadActive: relation "sessions" does not exist'); };
+    broken.createRoom = async () => { throw new Error('[db] createRoom: permission denied'); };
+    const s = await buildServer({ persistence: broken });
+    await new Promise((resolve) => s.httpServer.listen(0, resolve));
+    const base = `http://localhost:${s.httpServer.address().port}`;
+    try {
+      const health = await (await fetch(`${base}/api/health`)).json();
+      expect(health).toMatchObject({ status: 'ok', database: 'error' });
+      expect(health.databaseError).toContain('sessions');
+
+      const { token } = await (await fetch(`${base}/api/admin/login`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'test-password' }),
+      })).json();
+      const admin = connect(base, { auth: { token }, transports: ['websocket'], forceNew: true });
+      sockets.push(admin);
+      const res = await admin.timeout(2000).emitWithAck(E.ADMIN_CREATE_ROOM, {});
+      expect(res).toMatchObject({ ok: false, error: 'database' });
+      expect(s.registry.rooms.size).toBe(0);
+    } finally {
+      await s.close();
+    }
+  });
+});

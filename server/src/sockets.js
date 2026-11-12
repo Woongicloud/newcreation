@@ -209,7 +209,13 @@ export function attachSockets(io, registry) {
     });
 
     on(EVENTS.ADMIN_CREATE_ROOM, adminOnly(async () => {
-      const room = await registry.create();
+      let room;
+      try {
+        room = await registry.create();
+      } catch (e) {
+        console.error(e.message);
+        return fail('database', 'DB에 저장하지 못해 방을 만들 수 없습니다. 서버의 /api/health 를 확인해주세요.');
+      }
       return { ok: true, roomCode: room.roomCode, state: enter(room, ROLES.ADMIN) };
     }));
 
