@@ -240,6 +240,39 @@ describe('참가자', () => {
   });
 });
 
+describe('정답 공개 전 결과 숨김', () => {
+  it('참가자는 공개 전까지 정오답·점수 변화를 받지 않는다 (반응속도 포함)', () => {
+    const { room, ids } = makeRoom();
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    room.submitAnswer(ids[0], 'a');
+    room.submitAnswer(ids[1], 'b');
+    let me = viewFor(room, ROLES.PLAYER, ids[1]).me;
+    expect(me).toMatchObject({ answered: true, answer: 'b', result: null, score: 0 });
+    room.submitAnswer(ids[2], 'a');
+    expect(room.phase).toBe(PHASES.QUESTION_CLOSED);
+    expect(viewFor(room, ROLES.PLAYER, ids[1]).me).toMatchObject({ result: null, score: 0 });
+    cmd(room, C.REVEAL);
+    me = viewFor(room, ROLES.PLAYER, ids[1]).me;
+    expect(me).toMatchObject({ score: -50, result: { isCorrect: false, delta: -50 } });
+    // 다음 문제로 넘어가면 지난 점수는 그대로 보인다
+    cmd(room, C.NEXT);
+    expect(viewFor(room, ROLES.PLAYER, ids[1]).me).toMatchObject({ score: -50, answered: false, result: null });
+  });
+
+  it('반응속도 순위 점수도 공개 때 보인다', () => {
+    const set = makeSet({ rounds: [{ gameMode: 'reaction', rankPoints: [300], points: 50, questions: [{ timeLimit: 6 }] }] });
+    const { room, ids } = makeRoom({ set, players: [['가', '중1', 'A']] });
+    room._rng = () => 0;
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    vi.advanceTimersByTime(1500);
+    room.submitReaction(ids[0], 200);
+    expect(room.phase).toBe(PHASES.QUESTION_CLOSED);
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).me).toMatchObject({ score: 0, result: null });
+    cmd(room, C.REVEAL);
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).me).toMatchObject({ score: 300, result: { rank: 1, delta: 300 } });
+  });
+});
+
 describe('집계와 메인 화면', () => {
   it('상위 10명을 등수·학년·브릿지·이름·점수로 내보낸다', () => {
     const players = Array.from({ length: 14 }, (_, i) => [`참가자${i + 1}`, '중1', i % 2 ? 'A' : 'B']);
@@ -247,6 +280,9 @@ describe('집계와 메인 화면', () => {
     cmd(room, C.NEXT); cmd(room, C.NEXT);
     expect(cmd(room, C.SHOW_STANDINGS).ok).toBe(false); // 문제 진행 중에는 띄울 수 없다
     ids.forEach((id, i) => { vi.advanceTimersByTime(10); room.submitAnswer(id, i < 12 ? 'a' : 'b'); });
+    expect(room.phase).toBe(PHASES.QUESTION_CLOSED);
+    expect(cmd(room, C.SHOW_STANDINGS).ok).toBe(false); // 마감 후에도 정답 공개 전에는 점수로 정답이 드러나므로 불가
+    cmd(room, C.REVEAL);
     expect(cmd(room, C.SHOW_STANDINGS).ok).toBe(true);
     const { standings } = viewFor(room, ROLES.DISPLAY);
     expect(standings.entries).toHaveLength(10);

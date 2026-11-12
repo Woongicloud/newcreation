@@ -1,7 +1,7 @@
 import MultipleChoice from './MultipleChoice.jsx';
 
 // 이미지 + 4지선다 — 상단 이미지, 하단은 기존 객관식 버튼 재사용
-export default function ImageMultipleChoice({ question, onSubmit, hasSubmitted, correctAnswer }) {
+export default function ImageMultipleChoice({ question, onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   return (
     <div className="w-full px-2 space-y-4">
       {question.imageUrl && (
@@ -18,6 +18,7 @@ export default function ImageMultipleChoice({ question, onSubmit, hasSubmitted, 
         onSubmit={onSubmit}
         hasSubmitted={hasSubmitted}
         correctAnswer={correctAnswer}
+        submittedAnswer={submittedAnswer}
         compact
       />
     </div>

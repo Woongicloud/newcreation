@@ -5,7 +5,8 @@
 //   'roster'             참가자 목록·접속 상태만 바뀜 (참가자 화면에는 보낼 필요 없음)
 //   'progress'           제출 현황만 바뀜
 //   'player_state' (playerId)              한 참가자의 화면만 바뀜 (본인 제출 직후)
-//   'private' (playerId, event, payload)   한 참가자에게만 보낼 내용
+//   'private' (playerId, event, payload)   한 참가자에게만 보낼 내용 (이모지 찾기 오답 재시도 알림만)
+//   ※ 채점 결과는 정답 공개 전까지 참가자에게 보내지 않는다 — views.js 의 me.result 참고
 //   'score_events' (events)                새 점수 기록 (DB 저장용)
 //   'round_rewrite' (roundIdx, events)     문제 무효 처리로 라운드 기록이 다시 계산됨
 //   'players' (players)                    참가자 정보·점수가 바뀜 (DB 저장용)
@@ -351,9 +352,6 @@ export class Room extends EventEmitter {
         res.rank = idx + 1;
         res.points = ev.applied;
         c.answers.set(player.id, { ...c.answers.get(player.id), isCorrect: true, delta: ev.applied, rank: idx + 1 });
-        this.emit('private', player.id, EVENTS.PLAYER_RESULT, {
-          isCorrect: true, delta: ev.applied, score: player.score, rank: idx + 1, ms: res.ms,
-        });
       });
     }
     if (added.length) this.emit('score_events', added);
@@ -484,7 +482,9 @@ export class Room extends EventEmitter {
 
   _showStandings(scope = 'total') {
     if (!this.set) return invalid('문제 세트가 없습니다.');
-    if (this.phase === PHASES.QUESTION_OPEN) return invalid('문제 진행 중에는 집계를 띄울 수 없습니다.');
+    if (this.phase === PHASES.QUESTION_OPEN || this.phase === PHASES.QUESTION_CLOSED) {
+      return invalid('정답을 공개한 뒤에 집계를 띄울 수 있습니다.');
+    }
     this._fillStandings(scope);
     this.showMain = false;
     this._changed();
@@ -560,7 +560,6 @@ export class Room extends EventEmitter {
     const result = { isCorrect, delta: ev.applied, score: player.score, accuracy };
     c.answers.set(playerId, { answer: text, isCorrect, delta: ev.applied, ms, accuracy });
     this.emit('score_events', [ev]);
-    this.emit('private', playerId, EVENTS.PLAYER_RESULT, result);
     this.emit('player_state', player.id);
     this.emit('progress');
     this._closeIfAllSubmitted();
@@ -586,7 +585,6 @@ export class Room extends EventEmitter {
     const result = { isCorrect: true, delta: ev.applied, score: player.score };
     this.current.answers.set(player.id, { answer: code.trim(), isCorrect: true, delta: ev.applied, ms });
     this.emit('score_events', [ev]);
-    this.emit('private', player.id, EVENTS.PLAYER_RESULT, result);
     this.emit('player_state', player.id);
     this.emit('progress');
     this._closeIfAllSubmitted();
@@ -604,7 +602,6 @@ export class Room extends EventEmitter {
       // 신호 전에 누르면 실격 (점수 없음)
       c.answers.set(playerId, { falseStart: true, isCorrect: false, delta: 0 });
       const result = { falseStart: true, isCorrect: false, delta: 0, score: player.score };
-      this.emit('private', playerId, EVENTS.PLAYER_RESULT, result);
       this.emit('player_state', player.id);
       this.emit('progress');
       this._closeIfAllSubmitted();

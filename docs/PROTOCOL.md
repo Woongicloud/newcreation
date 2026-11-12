@@ -51,7 +51,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 | `goto { round, question }` | 해당 문제로 이동 (0부터). 이미 채점한 문제를 다시 내면 이전 채점은 지워진다 |
 | `pause` / `resume` | 타이머와 접수를 멈춤 / 남은 시간부터 재개 |
 | `extend_time { seconds }` | 제한 시간 연장 (기본 10초) |
-| `show_standings { scope }` / `hide_standings` | 개인 집계 송출. `scope`: `total`(기본) / `round`. 문제 접수 중에는 불가 |
+| `show_standings { scope }` / `hide_standings` | 개인 집계 송출. `scope`: `total`(기본) / `round`. 정답 공개 전(접수 중·마감)에는 불가 |
 | `end_game` | 진행 중인 문제를 마감하고 `final`로 |
 | `award_next` | 다음 시상 항목 열기 (추첨은 이때 서버가 뽑는다) |
 | `award_step` | 현재 항목을 한 단계 공개 |
@@ -61,7 +61,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 
 ## 상태 — `room:state`
 
-상태가 바뀔 때마다 역할에 맞는 전체 스냅샷이 온다. 참가자가 답을 제출하면 그 참가자에게만 새 스냅샷이 바로 간다(`me.answered`, `me.result`). 화면은 이것만으로 그릴 수 있어야 한다(재접속 시에도 같은 스냅샷 한 번).
+상태가 바뀔 때마다 역할에 맞는 전체 스냅샷이 온다. 참가자가 답을 제출하면 그 참가자에게만 새 스냅샷이 바로 간다(`me.answered`, `me.answer`). **채점 결과(`me.result`)와 이번 문제 점수는 `question_reveal` 단계에서 처음 보낸다** — 그 전까지 `me.score`는 이번 문제 점수를 뺀 값이다. 옆 사람 폰으로 정답이 새지 않게 하기 위함이다. 화면은 이것만으로 그릴 수 있어야 한다(재접속 시에도 같은 스냅샷 한 번).
 
 ```jsonc
 {
@@ -94,7 +94,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 
 | 역할 | 필드 |
 |---|---|
-| 참가자 | `me { id, name, group, unit, score, rank, answered, result, emoji }` |
+| 참가자 | `me { id, name, group, unit, score, rank, answered, answer, result, emoji }` — `answer`는 본인이 낸 답, `result`는 공개 후에만 |
 | Display | `lobby [{ name, group, unit }]` (대기실에서만) |
 | 진행자·관리자 | `next { action, content?, correctAnswer?, theme?, title? }`, `outline` (순서표), `awardConfig` (시상 세트 구성), `awardList`·`awardIndex` (종료 후 결과), `award.result` (공개 전 전체 결과) |
 | 관리자 | `players [{ id, name, group, unit, score, online, rank }]` |
@@ -104,7 +104,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 | 이벤트 | 받는 쪽 | 내용 |
 |---|---|---|
 | `room:progress` | Display·진행자·관리자 | `{ step, submittedCount, onlineCount }` — 제출이 들어올 때마다 |
-| `player:result` | 해당 참가자 | `{ isCorrect, delta, score, accuracy?, retry?, falseStart?, rank?, ms? }` |
+| `player:result` | 해당 참가자 | 이모지 찾기 오답 재시도 알림만 `{ retry: true }`. 그 밖의 결과는 공개 때 상태로 온다 |
 | `chat:message` | 방 전체 | `{ id, message, sender, y }` — 글자 크기·속도는 Display가 표시 설정으로 정한다 |
 | `room:closed` | 방 전체 | 방이 닫힘 |
 
@@ -113,7 +113,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 | 이벤트 | 보내는 쪽 | 내용 |
 |---|---|---|
 | `player:register { roomCode, name, group, unit }` | 참가자 | → `{ token, playerId, state }`. 같은 이름·소속이 끊겨 있으면 이어받고, 접속 중이면 거절 |
-| `player:answer { answer }` | 참가자 | → 채점 결과. 이모지 찾기는 오답이면 `retry: true` |
+| `player:answer { answer }` | 참가자 | → `{ ok }`만 (결과 없음). 이모지 찾기는 오답이면 `retry: true` |
 | `player:react { clientMs }` | 참가자 | 반응속도. 신호 전이면 실격(`falseStart`) |
 | `chat:send { message }` | 참가자 | 60자, 0.7초 간격 제한 |
 | `admin:create_room` | 관리자 | → `{ roomCode, state }` |

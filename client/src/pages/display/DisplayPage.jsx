@@ -32,24 +32,6 @@ function Background({ background }) {
   return <div className="absolute inset-0" style={style} />;
 }
 
-function TimerRing() {
-  const t = useCountdown();
-  if (!t) return null;
-  const R = 45;
-  const C = 2 * Math.PI * R;
-  const color = t.paused ? 'var(--d-muted)' : t.fraction > 0.5 ? 'var(--d-accent)' : t.fraction > 0.25 ? '#FFD66B' : '#FF8A8A';
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: '11vw', height: '11vw' }}>
-      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-        <circle cx="50" cy="50" r={R} fill="none" stroke="var(--d-panel)" strokeWidth="8" />
-        <circle cx="50" cy="50" r={R} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
-          strokeDasharray={C} strokeDashoffset={C * (1 - t.fraction)} style={{ transition: 'stroke-dashoffset 0.25s linear' }} />
-      </svg>
-      <span className="absolute font-black tabular-nums" style={{ fontSize: '3.4vw', color }}>{t.paused ? '⏸' : t.seconds}</span>
-    </div>
-  );
-}
-
 function Lobby({ state }) {
   const names = state.lobby || [];
   return (
@@ -93,6 +75,66 @@ function Main({ state }) {
         {state.sessionName || '레크레이션'}
       </motion.p>
     </Screen>
+  );
+}
+
+// 오른쪽 위 작은 초시계. 남은 시간에 따라 바늘 테두리가 줄어든다.
+function Stopwatch() {
+  const t = useCountdown();
+  if (!t) return null;
+  const R = 38;
+  const C = 2 * Math.PI * R;
+  const color = t.paused ? 'var(--d-muted)' : t.fraction > 0.5 ? 'var(--d-accent)' : t.fraction > 0.25 ? '#FFD66B' : '#FF8A8A';
+  return (
+    <div className="relative shrink-0" style={{ width: '4.6vw', height: '5.2vw' }} title="남은 시간">
+      <svg viewBox="0 0 100 113" className="w-full h-full">
+        <rect x="42" y="0" width="16" height="9" rx="3" fill={color} />
+        <rect x="47" y="7" width="6" height="8" fill={color} />
+        <rect x="80" y="18" width="12" height="7" rx="3" fill={color} transform="rotate(45 86 21)" />
+        <circle cx="50" cy="63" r={R + 7} fill="var(--d-panel)" />
+        <circle cx="50" cy="63" r={R} fill="none" stroke="rgba(127,127,127,0.25)" strokeWidth="7" />
+        <circle cx="50" cy="63" r={R} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
+          strokeDasharray={C} strokeDashoffset={C * (1 - t.fraction)} transform="rotate(-90 50 63)"
+          style={{ transition: 'stroke-dashoffset 0.25s linear' }} />
+      </svg>
+      <span className="absolute inset-x-0 font-black tabular-nums text-center" style={{ top: '38%', fontSize: '1.6vw', lineHeight: 1, color }}>
+        {t.paused ? '⏸' : t.seconds}
+      </span>
+    </div>
+  );
+}
+
+// 정답 공개 때 떠오르는 큰 카드
+function RevealCard({ question, stats }) {
+  const mode = question.gameMode;
+  let label = '정답';
+  let body = question.correctAnswer;
+  if (mode === GAME_MODES.LONG_TYPING) { label = '결과'; body = `기준 통과 ${stats?.correct ?? 0}명`; }
+  if (mode === GAME_MODES.EMOJI_FIND) { label = '결과'; body = `짝을 찾은 사람 ${stats?.correct ?? 0}명`; }
+  if (body === null || body === undefined) return null;
+  const choiceIdx = question.choices ? question.choices.indexOf(question.correctAnswer) : -1;
+  const showCount = mode !== GAME_MODES.LONG_TYPING && mode !== GAME_MODES.EMOJI_FIND;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5, y: 60 }}
+        animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+        transition={{ opacity: { duration: 0.3 }, scale: { type: 'spring', damping: 11 }, y: { duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 0.6 } }}
+        className="rounded-[2vw] px-[6vw] py-[2vw] text-center max-w-[80vw]"
+        style={{ background: 'var(--d-accent)', color: 'var(--d-on-accent)', boxShadow: '0 2vw 5vw rgba(0,0,0,0.45)' }}
+      >
+        <p className="font-bold opacity-80" style={{ fontSize: '1.8vw' }}>{label}</p>
+        <p className="font-black leading-tight break-keep" style={{ fontSize: body.length > 14 ? '4.2vw' : '6vw' }}>
+          {choiceIdx >= 0 && <span className="mr-[1.2vw]">{CHOICE_LABELS[choiceIdx]}</span>}
+          {body}
+        </p>
+        {showCount && stats && (
+          <p className="font-bold mt-[0.6vw] opacity-80" style={{ fontSize: '1.7vw' }}>
+            정답 {stats.correct}명 / {stats.answered}명 제출
+          </p>
+        )}
+      </motion.div>
+    </div>
   );
 }
 
@@ -141,9 +183,22 @@ function QuestionScreen({ state }) {
           <span style={{ fontSize: '1.4vw', color: 'var(--d-accent2)' }}>
             Q{position.question + 1} / {position.questionCount} · {MODE_LABEL[mode]}
           </span>
-          <span className="ml-auto font-bold" style={{ fontSize: '1.4vw', color: 'var(--d-accent)' }}>
+          <span className="font-bold" style={{ fontSize: '1.4vw', color: 'var(--d-accent)' }}>
             +{question.points}{question.penalty ? ` / -${question.penalty}` : ''}
           </span>
+          <div className="ml-auto flex items-center gap-[1vw]">
+            <div className="flex flex-col items-end gap-[0.3vw]" style={{ fontSize: '1.2vw' }}>
+              <span className="font-bold tabular-nums">제출 {state.submittedCount}/{state.onlineCount}</span>
+              <div className="h-[0.45vw] w-[7vw] rounded-full overflow-hidden" style={{ background: 'var(--d-panel)' }}>
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: 'var(--d-accent)' }} />
+              </div>
+            </div>
+            {open ? <Stopwatch /> : (
+              <span className="px-[1vw] py-[0.3vw] rounded-full font-black" style={{ fontSize: '1.3vw', background: 'var(--d-panel)', color: 'var(--d-accent)' }}>
+                {revealed ? '정답 공개' : '마감'}
+              </span>
+            )}
+          </div>
         </div>
 
         {mode === GAME_MODES.CONSONANT && question.consonantHint && (
@@ -160,8 +215,10 @@ function QuestionScreen({ state }) {
           </div>
         )}
 
+        {/* 무대: 문제와 보기 사이의 남은 공간. 이미지가 여기 그려지고, 정답 공개 카드도 여기 뜬다 */}
+        <div className="flex-1 min-h-[10vw] relative flex flex-col items-center justify-center gap-[1vw]">
         {question.imageUrls?.length > 0 && (
-          <div className={`flex-1 min-h-[12vw] grid grid-rows-1 gap-[1vw] ${question.imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`absolute inset-0 grid grid-rows-1 gap-[1vw] ${question.imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {/* 남은 높이 안에서만 그린다 — 이미지가 보기 버튼을 덮지 않도록 */}
             {question.imageUrls.map((src) => (
               <div key={src} className="relative min-h-0 rounded-[1vw] overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)' }}>
@@ -179,35 +236,6 @@ function QuestionScreen({ state }) {
           </p>
         )}
 
-        {question.choices && (
-          <div className="grid grid-cols-2 gap-[1.2vw] mt-auto shrink-0">
-            {question.choices.map((choice, i) => {
-              const isAnswer = revealed && choice === question.correctAnswer;
-              return (
-                <div key={i} className="relative flex items-center gap-[1.2vw] rounded-[1vw] px-[1.8vw] py-[1.1vw] font-bold text-slate-900 transition-all"
-                  style={{
-                    fontSize: '1.9vw',
-                    backgroundColor: CHOICE_HEX[i % CHOICE_HEX.length],
-                    opacity: revealed && !isAnswer ? 0.35 : 1,
-                    outline: isAnswer ? '0.5vw solid var(--d-accent)' : 'none',
-                    transform: isAnswer ? 'scale(1.03)' : 'none',
-                  }}>
-                  <span style={{ fontSize: '2.2vw' }}>{CHOICE_LABELS[i] || i + 1}</span>
-                  <span className="flex-1">{choice}</span>
-                  {revealed && stats?.choiceCounts && <span className="font-mono">{stats.choiceCounts[i]}명</span>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {revealed && !question.choices && question.correctAnswer && mode !== GAME_MODES.LONG_TYPING && (
-          <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mt-auto self-center rounded-[1.5vw] px-[5vw] py-[1.6vw] font-black"
-            style={{ fontSize: '4vw', background: 'var(--d-accent)', color: 'var(--d-on-accent)' }}>
-            정답: {question.correctAnswer}
-          </motion.div>
-        )}
-
         {revealed && stats?.reaction && (
           <div className="flex flex-col gap-[0.8vw] w-full max-w-[60vw] self-center">
             {stats.reaction.slice(0, 5).map((r) => (
@@ -221,28 +249,31 @@ function QuestionScreen({ state }) {
             {stats.falseStarts > 0 && <p className="text-center" style={{ fontSize: '1.6vw', color: 'var(--d-muted)' }}>성급하게 누른 사람 {stats.falseStarts}명</p>}
           </div>
         )}
-      </div>
-
-      {/* 우측: 타이머와 제출 현황 */}
-      <div className="w-[20vw] shrink-0 flex flex-col items-center justify-center gap-[2vw] border-l px-[1.5vw]" style={{ borderColor: 'var(--d-border)' }}>
-        {open ? <TimerRing /> : (
-          <p className="font-black text-center" style={{ fontSize: '2.4vw', color: 'var(--d-accent)' }}>{revealed ? '정답 공개' : '마감!'}</p>
-        )}
-        <div className="w-full space-y-[0.6vw]">
-          <div className="flex justify-between" style={{ fontSize: '1.4vw' }}>
-            <span>제출</span>
-            <span className="font-bold">{state.submittedCount} / {state.onlineCount}</span>
-          </div>
-          <div className="h-[1vw] rounded-full overflow-hidden" style={{ background: 'var(--d-panel)' }}>
-            <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: 'var(--d-accent)' }} />
-          </div>
+          {revealed && mode !== GAME_MODES.REACTION && <RevealCard question={question} stats={stats} />}
         </div>
-        {revealed && stats && mode !== GAME_MODES.REACTION && (
-          <p className="text-center font-bold" style={{ fontSize: '1.8vw' }}>
-            정답 <span style={{ color: 'var(--d-accent)' }}>{stats.correct}</span>명
-            <span style={{ color: 'var(--d-muted)' }}> / {stats.answered}명 제출</span>
-          </p>
+
+        {question.choices && (
+          <div className="grid grid-cols-2 gap-[1.4vw] shrink-0">
+            {question.choices.map((choice, i) => {
+              const isAnswer = revealed && choice === question.correctAnswer;
+              return (
+                <div key={i} className="relative flex items-center gap-[1.4vw] rounded-[1.2vw] px-[2.2vw] py-[1.5vw] font-black text-slate-900 transition-all leading-tight"
+                  style={{
+                    fontSize: question.choices.some((c) => c.length > 12) ? '2.4vw' : '3vw',
+                    backgroundColor: CHOICE_HEX[i % CHOICE_HEX.length],
+                    opacity: revealed && !isAnswer ? 0.35 : 1,
+                    outline: isAnswer ? '0.5vw solid var(--d-accent)' : 'none',
+                    transform: isAnswer ? 'scale(1.03)' : 'none',
+                  }}>
+                  <span style={{ fontSize: '1.15em' }}>{CHOICE_LABELS[i] || i + 1}</span>
+                  <span className="flex-1">{choice}</span>
+                  {revealed && stats?.choiceCounts && <span className="font-mono" style={{ fontSize: '0.75em' }}>{stats.choiceCounts[i]}명</span>}
+                </div>
+              );
+            })}
+          </div>
         )}
+
       </div>
     </Screen>
   );
@@ -348,7 +379,7 @@ export default function DisplayPage() {
         {!preview && (
           <button
             onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())}
-            className="absolute top-3 right-3 z-50 px-3 py-1 rounded-lg text-xs border opacity-40 hover:opacity-100 transition-opacity"
+            className="absolute bottom-3 right-3 z-50 px-3 py-1 rounded-lg text-xs border opacity-30 hover:opacity-100 transition-opacity"
             style={{ background: 'var(--d-panel)', borderColor: 'var(--d-border)' }}
           >
             {fullscreen ? '⊡ 창모드' : '⊞ 전체화면'}

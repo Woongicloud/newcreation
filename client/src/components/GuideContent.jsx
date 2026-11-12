@@ -138,6 +138,7 @@ export default function GuideContent({ animate = true }) {
       <div className="mt-8 bg-white/70 border border-slate-200 rounded-2xl p-4 text-center">
         <p className="text-slate-700 text-sm font-semibold mb-1">채점 방식</p>
         <p className="text-slate-500 text-xs">정답이면 문제에 정해진 점수 — 빨리 내도 늦게 내도 같습니다</p>
+        <p className="text-slate-500 text-xs">맞았는지와 점수는 진행자가 정답을 공개할 때 함께 보여요</p>
         <p className="text-slate-500 text-xs">오답은 감점. 단, 한 라운드에서 깎이는 점수에는 한도가 있어요</p>
         <p className="text-slate-500 text-xs mt-2">반응게임은 빠른 순서대로 순위 점수</p>
         <p className="text-slate-500 text-xs">장문 타이핑은 정확도 기준을 넘으면 점수 (감점 없음)</p>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-export default function AudioQuiz({ question, onSubmit, hasSubmitted, correctAnswer }) {
+export default function AudioQuiz({ question, onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   const [text, setText] = useState('');
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef();
@@ -36,7 +36,7 @@ export default function AudioQuiz({ question, onSubmit, hasSubmitted, correctAns
 
       <input
         type="text"
-        value={text}
+        value={hasSubmitted && submittedAnswer != null ? submittedAnswer : text}
         onChange={(e) => setText(e.target.value)}
         disabled={hasSubmitted}
         placeholder="정답을 입력하세요"

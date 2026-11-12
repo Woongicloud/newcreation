@@ -5,7 +5,7 @@ import { useRoom, joinRoom, leaveRoom, request, EVENTS } from '../../lib/connect
 import { playerSession } from '../../lib/session.js';
 import { MODE_LABEL, memberLabel, signed } from '../../lib/labels.js';
 import Timer from '../../components/Timer.jsx';
-import ResultModal from '../../components/ResultModal.jsx';
+import FloatingScore from '../../components/FloatingScore.jsx';
 import ChatInput from '../../components/chat/ChatInput.jsx';
 import GameGuideModal from '../../components/GameGuideModal.jsx';
 import ConnectionBanner from '../../components/ConnectionBanner.jsx';
@@ -78,9 +78,9 @@ function QuestionView({ state }) {
       {notice && <p className="text-center text-red-600 text-sm font-semibold">{notice}</p>}
 
       <div className="relative">
-        {Text && <Text key={question.id} question={q} onSubmit={submit} hasSubmitted={locked} correctAnswer={answer} />}
+        {Text && <Text key={question.id} question={q} onSubmit={submit} hasSubmitted={locked} correctAnswer={answer} submittedAnswer={me.answer} />}
         {mode === GAME_MODES.LONG_TYPING && (
-          <LongTyping key={question.id} onSubmit={submit} hasSubmitted={me.answered} lastResult={me.result} timeExpired={!open} />
+          <LongTyping key={question.id} onSubmit={submit} hasSubmitted={me.answered} lastResult={me.result} timeExpired={!open} submittedAnswer={me.answer} />
         )}
         {mode === GAME_MODES.REACTION && (
           <ReactionGame key={question.id} signaled={!!reaction?.signaled} answered={me.answered} closed={!open} result={me.result} onReact={react} />
@@ -88,11 +88,11 @@ function QuestionView({ state }) {
         {mode === GAME_MODES.EMOJI_FIND && (
           <EmojiFind key={question.id} assign={me.emoji} onSubmitCode={submit} hasSubmitted={me.answered || !open} wrongNonce={wrongNonce} />
         )}
-        {me.result && mode !== GAME_MODES.REACTION && <ResultModal key={`result-${question.id}`} result={me.result} />}
+        {revealed && <FloatingScore key={`score-${question.id}`} result={me.result} answered={me.answered} gameMode={mode} />}
       </div>
 
-      {revealed && !me.answered && mode !== GAME_MODES.REACTION && (
-        <p className="text-center text-slate-600 text-sm bg-white/70 rounded-xl py-2">제출하지 않았습니다 (0점)</p>
+      {open && me.answered && mode !== GAME_MODES.EMOJI_FIND && (
+        <p className="text-center text-slate-600 text-sm bg-white/70 rounded-xl py-2">제출 완료 — 정답 공개를 기다려주세요</p>
       )}
     </div>
   );

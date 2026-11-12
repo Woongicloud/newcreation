@@ -70,7 +70,7 @@ export default function ReactionGame({ signaled, answered, closed, result, onRea
             <>
               <div className="text-5xl">✅</div>
               <p className="text-slate-800 text-2xl font-bold">눌렀습니다!</p>
-              <p className="text-slate-500 text-sm">결과를 기다리는 중...</p>
+              <p className="text-slate-500 text-sm">정답 공개 때 결과가 나옵니다</p>
             </>
           ) : (
             <>

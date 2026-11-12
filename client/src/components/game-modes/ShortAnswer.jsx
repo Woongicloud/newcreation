@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-export default function ShortAnswer({ onSubmit, hasSubmitted, correctAnswer }) {
+export default function ShortAnswer({ onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   const [text, setText] = useState('');
   const inputRef = useRef();
 
@@ -15,7 +15,7 @@ export default function ShortAnswer({ onSubmit, hasSubmitted, correctAnswer }) {
       <input
         ref={inputRef}
         type="text"
-        value={text}
+        value={hasSubmitted && submittedAnswer != null ? submittedAnswer : text}
         onChange={(e) => setText(e.target.value)}
         disabled={hasSubmitted}
         placeholder="정답을 입력하세요"

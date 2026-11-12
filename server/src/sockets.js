@@ -155,13 +155,16 @@ export function attachSockets(io, registry) {
     on(EVENTS.PLAYER_ANSWER, ({ answer }) => {
       const room = currentRoom();
       if (!room || socket.data.role !== ROLES.PLAYER) return fail(ERRORS.FORBIDDEN, '참가자만 제출할 수 있습니다.');
-      return room.submitAnswer(socket.data.playerId, answer);
+      const res = room.submitAnswer(socket.data.playerId, answer);
+      // 채점 결과는 정답 공개 때 상태로 전달한다. 이모지 찾기만 오답 재시도 여부를 바로 알려준다.
+      return res.ok ? { ok: true, ...(res.retry ? { retry: true } : {}) } : res;
     });
 
     on(EVENTS.PLAYER_REACT, ({ clientMs }) => {
       const room = currentRoom();
       if (!room || socket.data.role !== ROLES.PLAYER) return fail(ERRORS.FORBIDDEN, '참가자만 누를 수 있습니다.');
-      return room.submitReaction(socket.data.playerId, clientMs);
+      const res = room.submitReaction(socket.data.playerId, clientMs);
+      return res.ok ? { ok: true } : res;
     });
 
     let lastChatAt = 0;
