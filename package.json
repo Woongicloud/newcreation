@@ -12,9 +12,12 @@
     "dev:client": "npm run dev --workspace=client",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "npm run build --workspace=client",
-    "install:all": "npm install --workspaces"
+    "install:all": "npm install --workspaces",
+    "test": "vitest run",
+    "loadtest": "npm run loadtest --workspace=server"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "vitest": "^2.1.8"
   }
 }
