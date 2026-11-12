@@ -22,7 +22,15 @@ export function createApp({ registry, allowedOrigins }) {
   };
 
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString(), rooms: registry.rooms.size, storage: registry.persistence.kind });
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      rooms: registry.rooms.size,
+      storage: registry.persistence.kind,
+      // 저장소에 마지막으로 접근했을 때의 결과. error 면 방 생성·저장이 되지 않는다
+      database: registry.databaseError ? 'error' : 'ok',
+      ...(registry.databaseError ? { databaseError: registry.databaseError } : {}),
+    });
   });
 
   app.post('/api/admin/login', (req, res) => {

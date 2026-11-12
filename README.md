@@ -114,7 +114,8 @@ npm run loadtest
 
 1. Railway → New Project → 이 리포 선택 (루트의 `Dockerfile`로 빌드)
 2. 환경 변수: `ADMIN_PASSWORD`, `TOKEN_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CLIENT_URL` = Vercel 주소
-3. 배포 후 `https://서버주소/api/health`가 `"storage":"supabase"`를 돌려주는지 확인
+3. Railway 서비스의 **Root Directory는 비워두고**, Start Command를 따로 지정했다면 지운다 (`Dockerfile`의 명령을 쓴다)
+4. 배포 후 `https://서버주소/api/health`가 `"storage":"supabase"`, `"database":"ok"`를 돌려주는지 확인. `"database":"error"`면 함께 나오는 `databaseError`가 원인이다 (스키마 미적용, 키 오류, 프로젝트 일시정지 등)
 
 서버는 진행 상태를 Supabase에 저장하므로, 행사 중에 Railway가 재시작돼도 방이 그 단계 그대로 복구된다. 참가자·진행자는 자동으로 다시 붙는다.
 

@@ -17,6 +17,7 @@ export class RoomRegistry {
     this._saveTimers = new Map();
     this._queues = new Map(); // 방마다 저장 순서를 지키기 위한 직렬 큐
     this._listeners = new Set();
+    this.databaseError = null; // 마지막 저장소 오류 (/api/health 에 노출)
     this._sweeper = setInterval(() => this.sweep(), 10 * 60 * 1000);
     this._sweeper.unref?.();
   }
@@ -39,7 +40,13 @@ export class RoomRegistry {
       if (++attempts > 50) throw new Error('방 코드 생성 실패');
     } while (this.rooms.has(roomCode));
     const room = new Room({ roomCode });
-    await this.persistence.createRoom({ id: room.id, roomCode, createdAt: room.createdAt });
+    try {
+      await this.persistence.createRoom({ id: room.id, roomCode, createdAt: room.createdAt });
+      this.databaseError = null;
+    } catch (e) {
+      this.databaseError = e.message;
+      throw e;
+    }
     this._attach(room);
     return room;
   }
@@ -88,7 +95,9 @@ export class RoomRegistry {
 
   _enqueue(id, task) {
     const prev = this._queues.get(id) || Promise.resolve();
-    const next = prev.then(task).catch((e) => console.error(e.message));
+    const next = prev.then(task)
+      .then(() => { this.databaseError = null; })
+      .catch((e) => { this.databaseError = e.message; console.error(e.message); });
     this._queues.set(id, next);
     return next;
   }
