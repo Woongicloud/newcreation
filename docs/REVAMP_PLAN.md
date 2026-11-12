@@ -1,6 +1,6 @@
 # NewCreation 종합 개편 플랜 (v2)
 
-> 상태: 0–4단계 구현 완료. 5단계는 부하 테스트까지 완료, 배포 재연결과 실기기 리허설이 남음 · 작성일 2026-11-11
+> 상태: 0–4단계 구현 완료, 배포(Supabase·Railway·Vercel) 재연결 완료. 실기기 리허설이 남음 → [REHEARSAL.md](REHEARSAL.md) · 작성일 2026-11-11
 > 범위: 진행자 리모트 추가, 중간 개인 집계, 관리자 표시 설정, 포인트 체계 간소화, 학년·브릿지 팀 구성, 최종 시상 세트
 
 ## 1. 개편 방향 요약
@@ -331,7 +331,7 @@ socket.emit('host:command', { type: 'next', step: 17 })
 | 2. 진행자 리모트 + 관리자 | 완료 | 브라우저로 한 판 진행 확인 |
 | 3. Display | 완료 | 테마·배경·채팅 크기·집계 자동 스크롤·시상 연출 확인 |
 | 4. 참가자 | 완료 | 11개 모드 이식, 새로고침 복귀 확인. 기존 서버 코드 삭제 |
-| 5. 배포·리허설 | 일부 | 부하 테스트(`npm run loadtest`) 완료. **Vercel/Railway 재연결, Supabase 실연동 확인, 실기기 리허설은 남음** |
+| 5. 배포·리허설 | 일부 | 부하 테스트 완료, Supabase·Railway·Vercel 재연결 완료. **실기기 리허설이 남음** — [REHEARSAL.md](REHEARSAL.md) |
 
 **배포**: 1–4단계는 로컬 개발로 진행하고, 5단계에서 Vercel(client)·Railway(server)를 재연결한다. `vercel.json`과 `Dockerfile`은 그대로 쓸 수 있다. 바뀌는 환경변수는 `VITE_ADMIN_PASSWORD` 삭제, 서버에 `TOKEN_SECRET` 추가.
 

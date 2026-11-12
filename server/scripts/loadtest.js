@@ -109,8 +109,12 @@ console.log(`문제 ${questions}개, 채팅 ${chats}건, 요청 ${stats.ack.leng
 console.log(`요청 응답   p50 ${pct(stats.ack, 0.5).toFixed(1)}ms · p95 ${pct(stats.ack, 0.95).toFixed(1)}ms · 최대 ${Math.max(...stats.ack).toFixed(1)}ms`);
 console.log(`상태 전파   p50 ${pct(stats.fanout, 0.5).toFixed(1)}ms · p95 ${pct(stats.fanout, 0.95).toFixed(1)}ms · 최대 ${Math.max(...stats.fanout).toFixed(1)}ms  (명령 → 전원 수신)`);
 console.log(`점수 범위   ${Math.min(...scores)} ~ ${Math.max(...scores)}, 시상 ${admin.state.awardList.length}항목 완료`);
+const health = await (await fetch(`${target}/api/health`)).json();
+console.log(`저장소      ${health.storage} · database ${health.database}${health.databaseError ? ` (${health.databaseError})` : ''}`);
 console.log(`서버 메모리 ${local ? `${Math.round(process.memoryUsage().rss / 1048576)}MB (테스트 클라이언트 포함)` : '(원격 대상)'}`);
 
+// 테스트로 만든 방은 닫아 둔다 (떠 있는 서버를 대상으로 돌렸을 때 방이 남지 않게)
+await admin.ask(E.ADMIN_CLOSE_ROOM, { roomCode });
 for (const s of [admin, display, ...players]) s.close();
 if (local) await local.close();
 process.exit(0);
