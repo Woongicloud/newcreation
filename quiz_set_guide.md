@@ -12,7 +12,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
 ```json
 {
   "sessionName": "11월 레크레이션",
-  "scoring": { "points": 100, "penalty": 50 },
+  "scoring": { "points": 5, "penalty": 3 },
   "teams": {
     "groups": [
       { "name": "중1", "units": ["브릿지 A", "브릿지 B"] },
@@ -27,9 +27,11 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
 | 필드 | 필수 | 기본값 | 설명 |
 |------|------|--------|------|
 | `sessionName` | — | `레크레이션` | 행사 이름. 대기 화면·메인 화면에 나온다 |
-| `scoring.points` | — | `100` | 정답 점수 기본값 |
+| `scoring.points` | — | `5` | 정답 점수 기본값 |
 | `scoring.penalty` | — | `0` | 오답 감점 기본값 |
 | `scoring.lossCapRatio` | — | `0.5` | 라운드 손실 한도 비율 (아래 "점수 규칙") |
+| `scoring.scaleTo` | — | `5` | 큰 단위로 쓴 세트를 환산할 기준 점수 (아래 "점수 단위") |
+| `scoring.autoScale` | — | `true` | `false`면 적힌 점수를 환산하지 않고 그대로 쓴다 |
 | `teams` | — | 없음 | 학년·브릿지 명단. 없으면 참가자가 소속을 자유 입력한다 |
 | `awards` | — | 이번 행사 세트 | 최종 시상 구성 |
 | `standingsTop` | — | `10` | 중간 집계에 띄울 인원 |
@@ -41,10 +43,29 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
 ## 점수 규칙
 
 - 정답 `+points`, 오답 `-penalty`, 미제출 0점. **시간은 점수에 영향이 없다.**
-- 점수 값은 `문제 → 라운드 → scoring → 기본값(100 / 0)` 순으로 찾는다. 대부분은 `scoring`에 한 번만 적고, 보너스 문제에만 `points`를 따로 적으면 된다.
+- 점수 값은 `문제 → 라운드 → scoring → 기본값(5 / 0)` 순으로 찾는다. 대부분은 `scoring`에 한 번만 적고, 보너스 문제에만 `points`를 따로 적으면 된다.
 - **손실 한도**: 한 참가자가 한 라운드에서 깎이는 합계는 그 라운드 전체 문제 감점 합의 50%까지. 자동으로 적용되므로 따로 적지 않는다.
   - 예: 감점 50점 × 8문제 = 400점 → 그 라운드에서 최대 200점까지만 깎인다.
 - 동점이면 답을 빨리 낸 사람(누적 응답 시간이 짧은 사람)이 위.
+
+### 점수 단위
+
+문제당 점수는 **5점, 3점처럼 작은 단위**로 쓴다. 보통 문제 5점, 쉬운 문제 3점, 보너스 10–15점, 감점 1–3점 정도.
+
+100점·1000점처럼 큰 단위로 쓴 세트도 그대로 올릴 수 있다. 올릴 때 **세트에서 가장 많이 쓰인 문제 점수를 5점으로 맞춰 비율대로 환산**한다.
+
+| 적힌 값 (기준 100점) | 환산 |
+|---|---|
+| 문제 100점 | 5점 |
+| 보너스 300점 | 15점 |
+| 감점 50점 | 3점 (2.5 반올림) |
+| 반응속도 순위 `[300, 200, 100]` | `[15, 10, 5]` |
+
+- 0이 아닌 점수는 환산해도 최소 1점이 남는다.
+- 기준 점수가 10점 이하면 이미 작은 단위로 보고 환산하지 않는다.
+- 환산하면 업로드 결과에 "100점 → 5점 기준으로 환산" 안내가 나온다.
+- 기준을 5점이 아닌 다른 값으로 하려면 `"scoring": { "scaleTo": 10 }`, 환산을 끄려면 `"scoring": { "autoScale": false }`.
+- 팀(학년·브릿지) 점수는 평균이라 소수 첫째 자리까지 표시한다.
 
 > **기존 세트**: `maxScore`는 `points`로 읽는다. 예전에는 빨리 낼수록 점수가 높았지만, 이제는 적힌 점수가 그대로 지급된다.
 > `penalty`를 적지 않은 문제는 감점이 없다 (예전 기본값 200 → 0).
@@ -119,7 +140,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
 {
   "theme": "성경 상식",
   "gameMode": "multiple_choice",
-  "points": 100,
+  "points": 5,
   "penalty": 50,
   "standingsAfter": true,
   "questions": [ /* 문제 배열 */ ]
@@ -168,7 +189,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
 
 | 모드 | 내용 |
 |------|------|
-| `reaction` | 빠른 순으로 `rankPoints` 점수(예: `[300, 200, 100]`), 순위 밖은 `points`. 신호 전에 누르면 실격(0점). `correctAnswer`는 필요 없다 |
+| `reaction` | 빠른 순으로 `rankPoints` 점수(예: `[15, 10, 5]`), 순위 밖은 `points`. 신호 전에 누르면 실격(0점). `correctAnswer`는 필요 없다 |
 | `long_typing` | 정확도가 `passAccuracy`(기본 `0.9`) 이상이면 `points`, 아니면 0점. 감점 없음 |
 | `emoji_find` | 같은 조의 코드를 내면 `points`. 틀려도 감점 없이 다시 시도. `correctAnswer`는 필요 없다 |
 | `image_memory` | 이미지를 제한 시간 내내 보여주며 객관식으로 답한다. `memorizeDuration`은 쓰지 않는다 |
@@ -194,8 +215,8 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "choices": ["예루살렘", "베들레헴", "나사렛", "갈릴리"],
       "correctAnswer": "베들레헴",
       "timeLimit": 15,
-      "points": 1000,
-      "penalty": 200
+      "points": 5,
+      "penalty": 1
     }
   ]
 }
@@ -222,7 +243,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "content": "\"Amazing ___\" 빈칸에 들어갈 단어는?",
       "correctAnswer": "Grace",
       "timeLimit": 20,
-      "points": 800
+      "points": 4
     },
     {
       "content": "신약성경의 첫 번째 책 이름은?",
@@ -252,14 +273,14 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "consonantHint": "ㅇㅅ",
       "correctAnswer": "예수",
       "timeLimit": 20,
-      "points": 700
+      "points": 4
     },
     {
       "content": "이번엔 조금 어렵습니다",
       "consonantHint": "ㅅㄱㅈㅅ",
       "correctAnswer": "성경전서",
       "timeLimit": 25,
-      "points": 1000
+      "points": 5
     }
   ]
 }
@@ -287,13 +308,13 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "content": "주 _ 에 있는 기쁨은",
       "correctAnswer": "안",
       "timeLimit": 15,
-      "points": 600
+      "points": 3
     },
     {
       "content": "예 _ 그 _ 도",
       "correctAnswer": "수스",
       "timeLimit": 20,
-      "points": 800
+      "points": 4
     }
   ]
 }
@@ -320,7 +341,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "imageUrl": "moses.jpg",
       "correctAnswer": "모세",
       "timeLimit": 20,
-      "points": 1000
+      "points": 5
     },
     {
       "content": "이 장소는 어디일까요?",
@@ -363,7 +384,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "audioUrl": "amazing_grace.mp3",
       "correctAnswer": "Amazing Grace",
       "timeLimit": 30,
-      "points": 1000
+      "points": 5
     },
     {
       "content": "어떤 찬양 가수의 노래일까요?",
@@ -406,18 +427,18 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
     {
       "content": "노란 버튼이 뜨면 바로 누르세요!",
       "timeLimit": 5,
-      "points": 1000
+      "points": 5
     },
     {
       "content": "2라운드! 더 빠르게!",
       "timeLimit": 5,
-      "points": 500
+      "points": 3
     }
   ]
 }
 ```
 
-> `correctAnswer`는 적지 않는다. `rankPoints`로 순위별 점수를 줄 수 있다 (예: `"rankPoints": [300, 200, 100]`).
+> `correctAnswer`는 적지 않는다. `rankPoints`로 순위별 점수를 줄 수 있다 (예: `"rankPoints": [15, 10, 5]`).
 > `timeLimit`은 신호 표시 후 입력 대기 시간 (5초 권장).  
 > 점수는 빠른 순서대로 차등 배분 (1등: maxScore, 꼴등: 최소점수).
 
@@ -439,7 +460,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "choices": ["모세", "아브라함", "다윗", "엘리야"],
       "correctAnswer": "모세",
       "timeLimit": 20,
-      "points": 1000
+      "points": 5
     }
   ]
 }
@@ -471,7 +492,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "choices": ["3명", "4명", "5명", "6명"],
       "correctAnswer": "5명",
       "timeLimit": 15,
-      "points": 1000
+      "points": 5
     },
     {
       "content": "두 이미지에서 달라진 부분은?",
@@ -479,7 +500,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "choices": ["하늘 색", "나무 위치", "사람 수", "건물 모양"],
       "correctAnswer": "사람 수",
       "timeLimit": 20,
-      "points": 1000
+      "points": 5
     }
   ]
 }
@@ -510,7 +531,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "setSize": 3,
       "groupSize": 2,
       "timeLimit": 60,
-      "points": 1000
+      "points": 5
     }
   ]
 }
@@ -541,7 +562,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
       "content": "큰 화면의 말씀을 정확하게 따라 입력하세요",
       "correctAnswer": "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
       "timeLimit": 90,
-      "points": 1000,
+      "points": 5,
       "passAccuracy": 0.9
     }
   ]
@@ -575,7 +596,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
           "choices": ["요한복음 3:16", "시편 23편", "로마서 8:28", "빌립보서 4:13"],
           "correctAnswer": "로마서 8:28",
           "timeLimit": 15,
-          "points": 500
+          "points": 3
         },
         {
           "content": "우리 교회가 창립된 해는?",
@@ -593,7 +614,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
           "content": "신약성경은 총 몇 권인가요?",
           "correctAnswer": "27",
           "timeLimit": 15,
-          "points": 800
+          "points": 4
         }
       ]
     },
@@ -606,7 +627,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
           "consonantHint": "ㅎㄴㄴ",
           "correctAnswer": "하나님",
           "timeLimit": 20,
-          "points": 700
+          "points": 4
         }
       ]
     },
@@ -630,7 +651,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
           "imageUrl": "jordan_river.jpg",
           "correctAnswer": "요단강",
           "timeLimit": 20,
-          "points": 1000
+          "points": 5
         }
       ]
     },
@@ -643,7 +664,7 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
           "audioUrl": "worship_clip.mp3",
           "correctAnswer": "주님 한 분만으로",
           "timeLimit": 30,
-          "points": 1000
+          "points": 5
         }
       ]
     },
@@ -654,12 +675,12 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
         {
           "content": "신호가 뜨면 바로 누르세요!",
           "timeLimit": 5,
-          "points": 1000
+          "points": 5
         },
         {
           "content": "마지막 기회!",
           "timeLimit": 5,
-          "points": 1000
+          "points": 5
         }
       ]
     }

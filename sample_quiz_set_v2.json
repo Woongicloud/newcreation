@@ -1,6 +1,6 @@
 {
   "sessionName": "v2 샘플 세트",
-  "scoring": { "points": 100, "penalty": 50 },
+  "scoring": { "points": 5, "penalty": 3 },
   "teams": {
     "labels": { "group": "학년", "unit": "브릿지" },
     "groups": [
@@ -28,13 +28,13 @@
         { "content": "성경에서 가장 먼저 나오는 책은?", "choices": ["창세기", "출애굽기", "시편", "요한복음"], "correctAnswer": "창세기", "timeLimit": 15 },
         { "content": "예수님이 물로 만드신 것은?", "choices": ["빵", "포도주", "기름", "꿀"], "correctAnswer": "포도주", "timeLimit": 15 },
         { "content": "다음 중 12제자가 아닌 사람은?", "choices": ["베드로", "요한", "바울", "야고보"], "correctAnswer": "바울", "timeLimit": 15 },
-        { "content": "보너스! 노아의 방주에 비가 내린 기간은?", "choices": ["7일", "40일", "100일", "1년"], "correctAnswer": "40일", "timeLimit": 15, "points": 300 }
+        { "content": "보너스! 노아의 방주에 비가 내린 기간은?", "choices": ["7일", "40일", "100일", "1년"], "correctAnswer": "40일", "timeLimit": 15, "points": 15 }
       ]
     },
     {
       "theme": "초성 퀴즈",
       "gameMode": "consonant",
-      "points": 150,
+      "points": 8,
       "questions": [
         { "content": "예수님이 태어나신 곳", "consonantHint": "ㅂㄷㄹㅎ", "correctAnswer": "베들레헴", "timeLimit": 20 },
         { "content": "다윗이 쓰러뜨린 거인", "consonantHint": "ㄱㄹㅇ", "correctAnswer": "골리앗", "timeLimit": 20 }
@@ -43,8 +43,8 @@
     {
       "theme": "반응속도",
       "gameMode": "reaction",
-      "rankPoints": [300, 200, 100],
-      "points": 50,
+      "rankPoints": [15, 10, 5],
+      "points": 3,
       "questions": [
         { "content": "신호가 뜨면 바로 누르세요!", "timeLimit": 6 }
       ]

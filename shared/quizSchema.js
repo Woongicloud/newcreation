@@ -3,7 +3,7 @@
 // 정규화된 set 은 모든 문제에 points / penalty / timeLimit 이 채워져 있다.
 
 import { GAME_MODES } from './constants.js';
-import { SCORING_DEFAULTS, normalizeAnswer } from './scoring.js';
+import { SCORING_DEFAULTS, normalizeAnswer, scaleFactor, scalePoints } from './scoring.js';
 
 const MODES = new Set(Object.values(GAME_MODES));
 const CHOICE_MODES = new Set([
@@ -152,6 +152,8 @@ export function validateQuizSet(raw) {
     points: num(rawScoring.points, 'scoring.points', SCORING_DEFAULTS.points),
     penalty: num(rawScoring.penalty, 'scoring.penalty', SCORING_DEFAULTS.penalty),
     lossCapRatio: num(rawScoring.lossCapRatio, 'scoring.lossCapRatio', SCORING_DEFAULTS.lossCapRatio, { max: 1 }),
+    scaleTo: num(rawScoring.scaleTo, 'scoring.scaleTo', SCORING_DEFAULTS.scaleTo, { min: 1, integer: true }),
+    autoScale: rawScoring.autoScale !== false,
   };
 
   // ── 팀 (학년 → 브릿지) ───────────────────────────────────
@@ -314,6 +316,25 @@ export function validateQuizSet(raw) {
   }
   if (legacyScoreSeen) {
     warn('rounds', '기존 포맷의 "maxScore"를 "points"로 읽었습니다. 이제 점수는 시간과 무관하게 고정 지급됩니다.');
+  }
+
+  // ── 점수 단위 환산 ──────────────────────────────────────
+  // 100점·1000점처럼 큰 단위로 쓴 세트는 기준 점수가 scaleTo(기본 5점)가 되도록 비율로 줄인다.
+  if (scoring.autoScale) {
+    const all = rounds.flatMap((r) => r.questions.filter(() => r.gameMode !== GAME_MODES.REACTION).map((q) => q.points));
+    const { factor, base } = scaleFactor(all.length ? all : rounds.flatMap((r) => r.questions.map((q) => q.points)), scoring.scaleTo);
+    if (factor !== 1) {
+      for (const r of rounds) {
+        for (const q of r.questions) {
+          q.points = scalePoints(q.points, factor);
+          q.penalty = scalePoints(q.penalty, factor);
+          if (q.rankPoints) q.rankPoints = q.rankPoints.map((p) => scalePoints(p, factor));
+        }
+      }
+      scoring.points = scalePoints(scoring.points, factor);
+      scoring.penalty = scalePoints(scoring.penalty, factor);
+      warn('scoring', `점수를 ${base}점 → ${scoring.scaleTo}점 기준으로 환산했습니다 (비율 ${+(factor.toFixed(4))}). 환산하지 않으려면 "scoring": { "autoScale": false }`);
+    }
   }
 
   // ── 시상 세트 ───────────────────────────────────────────
