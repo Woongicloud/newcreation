@@ -50,7 +50,9 @@ export function teamScores(players, keyOf, { method = 'adjusted', weight = 3 } =
       if (method === 'sum') exact = t.sum;
       else if (method === 'average') exact = average;
       else exact = (t.sum + weight * globalAvg) / (t.members + weight);
-      return { key: t.key, exact, score: Math.round(exact), members: t.members, average: Math.round(average) };
+      // 문제당 점수가 작아(5점 등) 정수로 반올림하면 팀끼리 같아 보이므로 소수 첫째 자리까지
+      const round1 = (v) => Math.round(v * 10) / 10;
+      return { key: t.key, exact, score: round1(exact), members: t.members, average: round1(average) };
     })
     .sort((a, b) => b.exact - a.exact || b.average - a.average || String(a.key).localeCompare(String(b.key)))
     .map(({ exact, ...t }, i) => ({ rank: i + 1, ...t }));

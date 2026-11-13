@@ -4,7 +4,8 @@
 import { GAME_MODES } from './constants.js';
 
 export const SCORING_DEFAULTS = {
-  points: 100,
+  points: 5,           // 문제당 기본 점수 (작은 단위: 5점, 3점 …)
+  scaleTo: 5,          // 큰 단위로 쓴 세트를 환산할 기준 점수
   penalty: 0,
   lossCapRatio: 0.5,
   passAccuracy: 0.9,
@@ -81,4 +82,22 @@ export function reactionPoints(question, rankIndex) {
   const table = question.rankPoints;
   if (Array.isArray(table) && rankIndex < table.length) return table[rankIndex];
   return question.points;
+}
+
+// 큰 단위(100점, 1000점 …)로 쓴 세트를 작은 단위로 환산할 비율.
+// 세트에서 가장 많이 쓰인 문제 점수(기준 점수)를 scaleTo 로 맞춘다. 기준 점수가 작으면(≤ 10) 환산하지 않는다.
+export function scaleFactor(pointValues, scaleTo = SCORING_DEFAULTS.scaleTo) {
+  const counts = new Map();
+  for (const v of pointValues) if (v > 0) counts.set(v, (counts.get(v) || 0) + 1);
+  if (counts.size === 0) return { factor: 1, base: null };
+  // 가장 많이 쓰인 값, 같으면 작은 값
+  const [base] = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+  if (base <= 10) return { factor: 1, base };
+  return { factor: scaleTo / base, base };
+}
+
+// 환산한 점수. 0이 아닌 값은 최소 1점으로 남긴다 (작은 감점이 사라지지 않게).
+export function scalePoints(value, factor) {
+  if (!value || factor === 1) return value;
+  return Math.max(1, Math.round(value * factor));
 }

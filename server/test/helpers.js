@@ -7,7 +7,8 @@ export const mc = (correct = 'a', extra = {}) => ({ content: 'Q', choices: ['a',
 export function makeSet(overrides = {}) {
   const raw = {
     sessionName: '테스트',
-    scoring: { points: 100, penalty: 50 },
+    // 규칙(한도·순위 등) 검사용이라 큰 숫자 그대로 쓴다. 단위 환산은 quizSchema 테스트에서 따로 본다.
+    scoring: { points: 100, penalty: 50, autoScale: false },
     teams: { groups: [{ name: '중1', units: ['A', 'B'] }, { name: '중2', units: ['A'] }] },
     rounds: [
       { theme: 'R1', gameMode: 'multiple_choice', questions: [mc(), mc(), mc(), mc()] },

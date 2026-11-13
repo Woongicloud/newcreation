@@ -148,7 +148,7 @@ describe('한 판 진행', () => {
 
     const open = await until(p1, (s) => s.phase === PHASES.QUESTION_OPEN);
     expect(open.position).toMatchObject({ round: 0, question: 0, questionCount: 4 });
-    expect(open.question).toMatchObject({ content: '성경에서 가장 먼저 나오는 책은?', points: 100, penalty: 50 });
+    expect(open.question).toMatchObject({ content: '성경에서 가장 먼저 나오는 책은?', points: 5, penalty: 3 });
     expect(open.question.correctAnswer).toBeUndefined();
     expect(open.timer.deadlineAt).toBeGreaterThan(open.serverNow);
     expect(open.outline).toBeUndefined();
@@ -172,18 +172,18 @@ describe('한 판 진행', () => {
     const reveal = await until(display, (s) => s.phase === PHASES.QUESTION_REVEAL);
     expect(reveal.question.correctAnswer).toBe('창세기');
     expect(reveal.stats).toMatchObject({ answered: 2, correct: 1, choiceCounts: [1, 0, 1, 0] });
-    expect((await until(p2, (s) => s.phase === PHASES.QUESTION_REVEAL)).me).toMatchObject({ score: -50, rank: 2, result: { isCorrect: false, delta: -50 } });
+    expect((await until(p2, (s) => s.phase === PHASES.QUESTION_REVEAL)).me).toMatchObject({ score: -3, rank: 2, result: { isCorrect: false, delta: -3 } });
     // 마감 단계에서도 결과는 숨겨져 있었고, 공개되자 처음으로 받는다
     expect(p2.states.filter((x) => x.phase === PHASES.QUESTION_CLOSED).every((x) => x.me.result === null && x.me.score === 0)).toBe(true);
-    expect((await until(p1, (s) => s.phase === PHASES.QUESTION_REVEAL)).me).toMatchObject({ score: 100, result: { isCorrect: true, delta: 100 } });
+    expect((await until(p1, (s) => s.phase === PHASES.QUESTION_REVEAL)).me).toMatchObject({ score: 5, result: { isCorrect: true, delta: 5 } });
     expect(results).toEqual([]); // 개인 결과 이벤트는 따로 오지 않는다
 
     // 집계 송출
     await host.ask(E.HOST_COMMAND, { type: C.SHOW_STANDINGS, step: reveal.step });
     const standings = await until(display, (s) => s.standings);
     expect(standings.standings.entries).toEqual([
-      { rank: 1, group: '중1', unit: '브릿지 A', name: '김하늘', score: 100 },
-      { rank: 2, group: '중2', unit: '브릿지 B', name: '이바다', score: -50 },
+      { rank: 1, group: '중1', unit: '브릿지 A', name: '김하늘', score: 5 },
+      { rank: 2, group: '중2', unit: '브릿지 B', name: '이바다', score: -3 },
     ]);
 
     // 표시 설정은 관리자만, 바꾸면 Display 에 바로 간다
@@ -202,7 +202,7 @@ describe('한 판 진행', () => {
     expect(persistence.chats).toEqual([expect.objectContaining({ message: '화이팅', playerId: r1.playerId })]);
 
     // 관리자 화면에는 참가자 전체 목록이 온다
-    expect(admin.last().players.map((p) => [p.name, p.score, p.rank])).toEqual([['김하늘', 100, 1], ['이바다', -50, 2]]);
+    expect(admin.last().players.map((p) => [p.name, p.score, p.rank])).toEqual([['김하늘', 5, 1], ['이바다', -3, 2]]);
     expect(host.last().players).toBeUndefined();
 
     // ── 서버 재시작 ──
@@ -216,7 +216,7 @@ describe('한 판 진행', () => {
     const rejoined = await back.ask(E.ROOM_JOIN, { roomCode, token: playerToken });
     expect(rejoined).toMatchObject({
       ok: true, role: ROLES.PLAYER,
-      state: { phase: PHASES.QUESTION_REVEAL, step: stepBefore, me: { name: '김하늘', score: 100, result: { isCorrect: true } } },
+      state: { phase: PHASES.QUESTION_REVEAL, step: stepBefore, me: { name: '김하늘', score: 5, result: { isCorrect: true } } },
     });
     const host2 = client();
     const hostState = (await host2.ask(E.ROOM_JOIN, { roomCode, token: hostLink.token })).state;
@@ -227,7 +227,7 @@ describe('한 판 진행', () => {
 
     // 저장소에 점수 기록이 남아 있다
     const saved = [...persistence.sessions.values()].find((s) => s.roomCode === roomCode);
-    expect(saved.events.map((e) => [e.isCorrect, e.raw, e.applied])).toEqual([[true, 100, 100], [false, -50, -50]]);
+    expect(saved.events.map((e) => [e.isCorrect, e.raw, e.applied])).toEqual([[true, 5, 5], [false, -3, -3]]);
     expect([...saved.players.values()].map((p) => p.name).sort()).toEqual(['김하늘', '이바다']);
   });
 });

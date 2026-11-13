@@ -21,9 +21,9 @@ describe('팀 점수 — 보정 평균', () => {
     expect(players.reduce((s, p) => s + p.score, 0) / players.length).toBe(800);
     const result = teamScores(players, unitKey, { method: 'adjusted', weight: 3 });
     expect(result.map((t) => [t.key, t.score, t.members])).toEqual([
-      ['중1/B', 1055, 8],  // (9,200 + 2,400) ÷ 11
-      ['중1/A', 1040, 2],  // (2,800 + 2,400) ÷ 5
-      ['중2/C', 492, 10],  // (4,000 + 2,400) ÷ 13
+      ['중1/B', 1054.5, 8],  // (9,200 + 2,400) ÷ 11 — 소수 첫째 자리까지
+      ['중1/A', 1040, 2],    // (2,800 + 2,400) ÷ 5
+      ['중2/C', 492.3, 10],  // (4,000 + 2,400) ÷ 13
     ]);
     expect(result.map((t) => t.rank)).toEqual([1, 2, 3]);
   });
