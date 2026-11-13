@@ -246,11 +246,30 @@ export function validateQuizSet(raw) {
         };
         if (!out.content && !NO_ANSWER_MODES.has(mode)) err(`${qp}.content`, '문제 내용이 필요합니다.');
 
+        // 정답을 배열로 적으면 첫 번째가 대표 정답, 나머지는 인정 답
+        let correct = q.correctAnswer;
+        let accept = q.acceptAnswers;
+        if (Array.isArray(correct)) {
+          accept = [...correct.slice(1), ...(Array.isArray(accept) ? accept : [])];
+          correct = correct[0];
+        }
         if (!NO_ANSWER_MODES.has(mode)) {
-          if (!isStr(q.correctAnswer) && !isNum(q.correctAnswer)) {
+          if (!isStr(correct) && !isNum(correct)) {
             err(`${qp}.correctAnswer`, '정답이 필요합니다.');
           } else {
-            out.correctAnswer = String(q.correctAnswer);
+            out.correctAnswer = String(correct);
+          }
+        }
+        if (accept !== undefined) {
+          if (!Array.isArray(accept) || !accept.every((a) => isStr(a) || isNum(a) || a === '')) {
+            err(`${qp}.acceptAnswers`, '다른 인정 답은 문자열 배열이어야 합니다.');
+          } else {
+            const list = [...new Set(accept.map((a) => String(a).trim()).filter(Boolean))];
+            if (list.length && (CHOICE_MODES.has(mode) || NO_ANSWER_MODES.has(mode) || mode === GAME_MODES.LONG_TYPING)) {
+              warn(`${qp}.acceptAnswers`, '이 게임 모드에서는 다른 인정 답을 쓰지 않습니다. (무시됨)');
+            } else if (list.length) {
+              out.acceptAnswers = list;
+            }
           }
         }
 

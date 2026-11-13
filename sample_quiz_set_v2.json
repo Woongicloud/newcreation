@@ -36,7 +36,7 @@
       "gameMode": "consonant",
       "points": 8,
       "questions": [
-        { "content": "예수님이 태어나신 곳", "consonantHint": "ㅂㄷㄹㅎ", "correctAnswer": "베들레헴", "timeLimit": 20, "answerImage": "sample_image_1.svg", "answerNote": "예루살렘 남쪽의 작은 마을" },
+        { "content": "예수님이 태어나신 곳", "consonantHint": "ㅂㄷㄹㅎ", "correctAnswer": "베들레헴", "acceptAnswers": ["Bethlehem"], "timeLimit": 20, "answerImage": "sample_image_1.svg", "answerNote": "예루살렘 남쪽의 작은 마을" },
         { "content": "다윗이 쓰러뜨린 거인", "consonantHint": "ㄱㄹㅇ", "correctAnswer": "골리앗", "timeLimit": 20 }
       ]
     },

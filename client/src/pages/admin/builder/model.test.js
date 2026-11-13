@@ -77,3 +77,21 @@ describe('문제 만들기 모델', () => {
     expect(pathLabel('teams.groups[0]')).toBe('teams.groups[0]');
   });
 });
+
+describe('문제 만들기 — 다른 인정 답', () => {
+  it('빈 칸은 빼고 내보내며, 서버 검사를 통과한다', () => {
+    const set = newSet();
+    set.rounds = [{ theme: 'R', gameMode: M.SHORT_ANSWER, questions: [{ content: '수제자는?', correctAnswer: '베드로', acceptAnswers: ['시몬', '', ' 시몬 베드로 '], timeLimit: 10 }] }];
+    const out = cleanSet(set);
+    expect(out.rounds[0].questions[0].acceptAnswers).toEqual(['시몬', '시몬 베드로']);
+    const { ok, set: checked } = validateQuizSet(out);
+    expect(ok).toBe(true);
+    expect(checked.rounds[0].questions[0].acceptAnswers).toEqual(['시몬', '시몬 베드로']);
+  });
+
+  it('입력형 모드끼리 바꾸면 인정 답이 남고, 객관식으로 바꾸면 빠진다', () => {
+    const q = { content: 'Q', correctAnswer: '서울', acceptAnswers: ['서울특별시'] };
+    expect(convertQuestion(q, M.CONSONANT).acceptAnswers).toEqual(['서울특별시']);
+    expect(convertQuestion(q, M.MULTIPLE_CHOICE).acceptAnswers).toBeUndefined();
+  });
+});

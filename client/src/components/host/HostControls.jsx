@@ -87,7 +87,10 @@ export default function HostControls({ compact = false }) {
             <p className="text-lg font-bold leading-snug">{question.content}</p>
             {question.consonantHint && <p className="text-amber-300 font-bold tracking-widest">{question.consonantHint}</p>}
             {question.correctAnswer !== undefined && (
-              <p className="text-emerald-300 font-bold">정답: {question.correctAnswer}</p>
+              <p className="text-emerald-300 font-bold">
+                정답: {question.correctAnswer}
+                {question.acceptAnswers?.length > 0 && <span className="text-emerald-200/80 font-normal"> (또는 {question.acceptAnswers.join(', ')})</span>}
+              </p>
             )}
             <div className="flex items-center justify-between pt-1">
               <p className={`text-2xl font-black tabular-nums ${countdown && countdown.seconds <= 5 && open ? 'text-red-400' : ''}`}>
@@ -130,7 +133,7 @@ export default function HostControls({ compact = false }) {
         <div className="rounded-xl bg-slate-900/70 border border-slate-800 px-4 py-2 text-sm">
           <span className="text-slate-400">다음: </span>
           <span className="font-semibold">{next.content || next.theme || next.title}</span>
-          {next.correctAnswer && <span className="text-emerald-300"> → {next.correctAnswer}</span>}
+          {next.correctAnswer && <span className="text-emerald-300"> → {[next.correctAnswer, ...(next.acceptAnswers || [])].join(" / ")}</span>}
         </div>
       )}
 
@@ -201,7 +204,7 @@ export default function HostControls({ compact = false }) {
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm ${here ? 'bg-emerald-800' : 'bg-slate-900'}`}
                     >
                       <span className="text-slate-400">{qi + 1}. </span>{q.content}
-                      {q.correctAnswer && <span className="text-emerald-300"> → {q.correctAnswer}</span>}
+                      {q.correctAnswer && <span className="text-emerald-300"> → {[q.correctAnswer, ...(q.acceptAnswers || [])].join(" / ")}</span>}
                     </button>
                   );
                 })}

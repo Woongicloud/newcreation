@@ -116,9 +116,22 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
 
       {fields.includes('correctAnswer') && (
         <div>
-          <span className={label}>정답</span>
+          <span className={label}>정답 (화면에 보이는 대표 정답 · 띄어쓰기·대소문자·문장부호는 무시하고 비교)</span>
           <input className={box} value={q.correctAnswer || ''} onChange={(e) => set({ correctAnswer: e.target.value })} />
           <ErrorText name="correctAnswer" />
+          <span className={`${label} mt-2`}>다른 인정 답 (선택) — 다르게 불러도 맞게 처리할 답</span>
+          <div className="flex flex-wrap gap-1">
+            {(q.acceptAnswers || []).map((a, i) => (
+              <span key={i} className="flex items-center">
+                <input className={`${input} w-36`} value={a} placeholder="예: 다른 이름"
+                  onChange={(e) => set({ acceptAnswers: q.acceptAnswers.map((x, j) => (j === i ? e.target.value : x)) })} />
+                <button type="button" className="text-slate-500 hover:text-red-300 px-1" title="빼기"
+                  onClick={() => set({ acceptAnswers: q.acceptAnswers.filter((_, j) => j !== i) })}>✕</button>
+              </span>
+            ))}
+            <button type="button" className={btn} onClick={() => set({ acceptAnswers: [...(q.acceptAnswers || []), ''] })}>+ 인정 답 추가</button>
+          </div>
+          <ErrorText name="acceptAnswers" />
         </div>
       )}
 

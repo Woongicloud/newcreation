@@ -16,7 +16,7 @@ export const MODES = [
     sub: 'Short Answer',
     color: 'from-purple-100 to-purple-50 border-purple-200',
     desc: '프로젝터 화면의 문제를 보고 답을 직접 입력하세요.',
-    tip: '띄어쓰기, 대소문자는 무시됩니다. 핵심 단어만 입력해도 OK!',
+    tip: '띄어쓰기, 대소문자, 문장부호는 무시됩니다. 다르게 불러도 인정되는 답이 있어요!',
     how: '텍스트 칸에 답 입력 → 제출하기 버튼.',
   },
   {
