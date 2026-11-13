@@ -104,9 +104,11 @@ function Stopwatch() {
   );
 }
 
-// 정답 공개 때 떠오르는 큰 카드
+// 정답 공개 때 떠오르는 큰 카드. 화면의 대부분(문제·보기의 약 80%)을 덮는다.
+// 세트에 answerImage 가 있으면 참고 사진을 크게, answerNote 가 있으면 설명을 함께 보여준다.
 function RevealCard({ question, stats }) {
   const mode = question.gameMode;
+  const [imageFailed, setImageFailed] = useState(false);
   let label = '정답';
   let body = question.correctAnswer;
   if (mode === GAME_MODES.LONG_TYPING) { label = '결과'; body = `기준 통과 ${stats?.correct ?? 0}명`; }
@@ -114,24 +116,57 @@ function RevealCard({ question, stats }) {
   if (body === null || body === undefined) return null;
   const choiceIdx = question.choices ? question.choices.indexOf(question.correctAnswer) : -1;
   const showCount = mode !== GAME_MODES.LONG_TYPING && mode !== GAME_MODES.EMOJI_FIND;
+  const image = question.answerImage && !imageFailed ? question.answerImage : null;
+  const long = body.length > 14;
+
+  const answer = (
+    <>
+      <p className="font-bold opacity-80" style={{ fontSize: '2vw' }}>{label}</p>
+      <p className="font-black leading-tight break-keep" style={{ fontSize: image ? (long ? '3.6vw' : '5.4vw') : (long ? '5vw' : '8vw') }}>
+        {choiceIdx >= 0 && <span className="mr-[1.2vw]">{CHOICE_LABELS[choiceIdx]}</span>}
+        {body}
+      </p>
+      {question.answerNote && (
+        <p className="font-bold leading-snug opacity-90 mt-[0.8vw]" style={{ fontSize: '1.9vw' }}>{question.answerNote}</p>
+      )}
+      {showCount && stats && (
+        <p className="font-bold mt-[1vw] opacity-75" style={{ fontSize: '1.7vw' }}>정답 {stats.correct}명 / {stats.answered}명 제출</p>
+      )}
+    </>
+  );
+
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center" style={{ paddingTop: '7vw', paddingBottom: '2vw' }}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.5, y: 60 }}
-        animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
-        transition={{ opacity: { duration: 0.3 }, scale: { type: 'spring', damping: 11 }, y: { duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 0.6 } }}
-        className="rounded-[2vw] px-[6vw] py-[2vw] text-center max-w-[80vw]"
-        style={{ background: 'var(--d-accent)', color: 'var(--d-on-accent)', boxShadow: '0 2vw 5vw rgba(0,0,0,0.45)' }}
+        initial={{ opacity: 0, scale: 0.6, y: 80 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', damping: 13 }}
+        className={`rounded-[2vw] overflow-hidden flex ${image ? 'flex-row items-stretch' : 'flex-col items-center justify-center text-center'}`}
+        style={{
+          width: '84vw',
+          height: '100%',
+          background: 'var(--d-accent)',
+          color: 'var(--d-on-accent)',
+          boxShadow: '0 2vw 6vw rgba(0,0,0,0.55)',
+        }}
       >
-        <p className="font-bold opacity-80" style={{ fontSize: '1.8vw' }}>{label}</p>
-        <p className="font-black leading-tight break-keep" style={{ fontSize: body.length > 14 ? '4.2vw' : '6vw' }}>
-          {choiceIdx >= 0 && <span className="mr-[1.2vw]">{CHOICE_LABELS[choiceIdx]}</span>}
-          {body}
-        </p>
-        {showCount && stats && (
-          <p className="font-bold mt-[0.6vw] opacity-80" style={{ fontSize: '1.7vw' }}>
-            정답 {stats.correct}명 / {stats.answered}명 제출
-          </p>
+        {image ? (
+          <>
+            <div className="relative flex-[3] min-w-0 m-[1.4vw] rounded-[1.2vw] overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)' }}>
+              <motion.img
+                src={image}
+                alt=""
+                onError={() => setImageFailed(true)}
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.15 }}
+                className="absolute inset-0 w-full h-full object-contain"
+              />
+            </div>
+            <div className="flex-[2] min-w-0 flex flex-col justify-center px-[2.4vw] py-[2vw]">{answer}</div>
+          </>
+        ) : (
+          <div className="px-[5vw]">{answer}</div>
         )}
       </motion.div>
     </div>
@@ -249,7 +284,6 @@ function QuestionScreen({ state }) {
             {stats.falseStarts > 0 && <p className="text-center" style={{ fontSize: '1.6vw', color: 'var(--d-muted)' }}>성급하게 누른 사람 {stats.falseStarts}명</p>}
           </div>
         )}
-          {revealed && mode !== GAME_MODES.REACTION && <RevealCard question={question} stats={stats} />}
         </div>
 
         {question.choices && (
@@ -275,6 +309,7 @@ function QuestionScreen({ state }) {
         )}
 
       </div>
+      {revealed && mode !== GAME_MODES.REACTION && <RevealCard key={question.id} question={question} stats={stats} />}
     </Screen>
   );
 }

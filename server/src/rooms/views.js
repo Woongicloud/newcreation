@@ -34,6 +34,11 @@ function questionView(room, { withAnswer }) {
   // 장문 타이핑은 원문을 보고 따라 치는 게임이라 원문을 항상 보낸다
   if (round.gameMode === GAME_MODES.LONG_TYPING) view.targetText = q.correctAnswer;
   if (withAnswer && q.correctAnswer !== null) view.correctAnswer = q.correctAnswer;
+  // 정답 참고 이미지·설명은 누구에게나 공개 순간에만 보낸다 (Display 는 누구나 열 수 있어 미리 보내면 정답이 샌다)
+  if (room.phase === PHASES.QUESTION_REVEAL) {
+    if (q.answerImage) view.answerImage = q.answerImage;
+    if (q.answerNote) view.answerNote = q.answerNote;
+  }
   return view;
 }
 

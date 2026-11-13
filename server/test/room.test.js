@@ -339,3 +339,25 @@ describe('저장과 복구', () => {
     expect(restored.phase).toBe(PHASES.QUESTION_CLOSED);
   });
 });
+
+describe('정답 참고 이미지', () => {
+  it('세트에 넣은 이미지·설명은 정답 공개 때만 모든 화면에 간다', () => {
+    const set = makeSet({ rounds: [{ gameMode: 'short_answer', questions: [
+      { content: '대한민국의 수도는?', correctAnswer: '서울', answerImage: 'seoul.jpg', answerNote: '1394년부터 수도' },
+      { content: 'Q2', correctAnswer: 'x', answerImage: 'https://example.com/a.png' },
+    ] }] });
+    expect(set.rounds[0].questions[0].answerImage).toBe('/media/seoul.jpg');
+    expect(set.rounds[0].questions[1].answerImage).toBe('https://example.com/a.png');
+    const { room, ids } = makeRoom({ set });
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    for (const role of [ROLES.DISPLAY, ROLES.HOST, ROLES.ADMIN]) {
+      expect(viewFor(room, role).question.answerImage).toBeUndefined();
+    }
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).question.answerImage).toBeUndefined();
+    ids.forEach((id) => room.submitAnswer(id, '서울'));
+    expect(viewFor(room, ROLES.DISPLAY).question.answerImage).toBeUndefined(); // 마감했어도 공개 전
+    cmd(room, C.REVEAL);
+    expect(viewFor(room, ROLES.DISPLAY).question).toMatchObject({ answerImage: '/media/seoul.jpg', answerNote: '1394년부터 수도' });
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).question.answerImage).toBe('/media/seoul.jpg');
+  });
+});
