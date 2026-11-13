@@ -1,6 +1,8 @@
 # 퀴즈 세트 JSON 작성 가이드
 
 NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 → JSON 올리기**로 올린다.
+
+> **직접 JSON을 쓰지 않아도 된다.** 관리자 화면 **⑤ 문제 만들기**에서 게임 모드별 입력칸으로 세트를 만들고, 바로 방에 적용하거나 JSON으로 내보낼 수 있다. 기존 JSON을 불러와 고칠 수도 있다. 이 문서는 형식을 자세히 알고 싶을 때 참고한다.
 올릴 때 서버가 검사해서, 잘못된 곳이 있으면 `rounds[2].questions[0].correctAnswer`처럼 위치와 함께 알려준다.
 
 완성된 예시는 [sample_quiz_set_v2.json](sample_quiz_set_v2.json).

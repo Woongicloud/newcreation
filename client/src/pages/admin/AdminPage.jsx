@@ -8,13 +8,17 @@ import PrepareTab from './PrepareTab.jsx';
 import RunTab from './RunTab.jsx';
 import SettingsTab from './SettingsTab.jsx';
 import AwardsTab from './AwardsTab.jsx';
+import SetBuilder from './builder/SetBuilder.jsx';
 
 const TABS = [
   ['prepare', '① 준비'],
   ['run', '② 진행'],
   ['settings', '③ 표시 설정'],
   ['awards', '④ 시상'],
+  ['builder', '⑤ 문제 만들기'],
 ];
+// 방이 없어도 열 수 있는 탭
+const ROOMLESS = new Set(['prepare', 'builder']);
 
 function Login({ onDone }) {
   const [password, setPassword] = useState('');
@@ -134,7 +138,7 @@ export default function AdminPage() {
           ) : <p className="text-sm text-slate-400">방을 만들거나 선택하세요</p>}
           <nav className="flex gap-1 ml-auto">
             {TABS.map(([id, label]) => (
-              <button key={id} onClick={() => setTab(id)} disabled={!state && id !== 'prepare'}
+              <button key={id} onClick={() => setTab(id)} disabled={!state && !ROOMLESS.has(id)}
                 className={`px-3 py-2 rounded-lg text-sm font-bold disabled:opacity-30 ${tab === id ? 'bg-sky-600' : 'bg-slate-800 hover:bg-slate-700'}`}>
                 {label}
               </button>
@@ -150,6 +154,7 @@ export default function AdminPage() {
         {tab === 'run' && state && <RunTab {...ctx} />}
         {tab === 'settings' && state && <SettingsTab {...ctx} />}
         {tab === 'awards' && state && <AwardsTab {...ctx} />}
+        {tab === 'builder' && <SetBuilder {...ctx} />}
       </main>
     </div>
   );
