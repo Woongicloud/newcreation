@@ -63,7 +63,9 @@ function QuestionView({ state }) {
 
   // 기존 모드 컴포넌트는 imageUrl 하나를 받는다
   const q = { ...question, imageUrl: question.imageUrls?.[0] };
-  const answer = revealed ? question.correctAnswer : null;
+  const answer = revealed
+    ? (question.choices ? question.correctAnswer : [question.correctAnswer, ...(question.acceptAnswers || [])].join(' / '))
+    : null;
   const Text = TEXT_MODES[mode];
 
   return (

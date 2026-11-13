@@ -126,6 +126,9 @@ function RevealCard({ question, stats }) {
         {choiceIdx >= 0 && <span className="mr-[1.2vw]">{CHOICE_LABELS[choiceIdx]}</span>}
         {body}
       </p>
+      {question.acceptAnswers?.length > 0 && (
+        <p className="font-bold opacity-80 mt-[0.4vw]" style={{ fontSize: '1.8vw' }}>또는 {question.acceptAnswers.join(' · ')}</p>
+      )}
       {question.answerNote && (
         <p className="font-bold leading-snug opacity-90 mt-[0.8vw]" style={{ fontSize: '1.9vw' }}>{question.answerNote}</p>
       )}

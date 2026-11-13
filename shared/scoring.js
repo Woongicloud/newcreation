@@ -17,6 +17,19 @@ export function normalizeAnswer(answer) {
   return String(answer).normalize('NFC').replace(/\s/g, '').toLowerCase();
 }
 
+// 직접 입력하는 답 비교용: 띄어쓰기·대소문자에 더해 문장부호도 무시한다.
+// 전각 문자는 반각으로 (ＡＢＣ → abc). 문장부호만으로 된 정답은 문장부호를 지우지 않는다.
+const PUNCT = /[.,!?~'"`·…\-_()[\]{}:;/\\|<>«»“”‘’「」『』、。！？～]/g;
+export function normalizeTyped(answer) {
+  const base = normalizeAnswer(String(answer ?? '').normalize('NFKC'));
+  const stripped = base.replace(PUNCT, '');
+  return stripped || base;
+}
+
+// 문제가 인정하는 답 목록 (대표 정답 + 다른 인정 답)
+export const acceptedAnswers = (question) => [question.correctAnswer, ...(question.acceptAnswers || [])]
+  .filter((a) => a !== null && a !== undefined && String(a).trim() !== '');
+
 // 장문 비교용: 공백은 1칸으로 축약, 소문자
 function normalizeText(text) {
   if (!text) return '';
@@ -67,7 +80,14 @@ export function judgeAnswer(gameMode, question, answer) {
     const accuracy = textSimilarity(answer, question.correctAnswer);
     return { isCorrect: accuracy >= (question.passAccuracy ?? SCORING_DEFAULTS.passAccuracy), accuracy };
   }
-  return { isCorrect: normalizeAnswer(answer) === normalizeAnswer(question.correctAnswer) };
+  // 객관식 계열은 고른 보기를 그대로 비교
+  if (Array.isArray(question.choices)) {
+    return { isCorrect: normalizeAnswer(answer) === normalizeAnswer(question.correctAnswer) };
+  }
+  // 직접 입력: 띄어쓰기·대소문자·문장부호 무시, 인정 답 중 하나와 같으면 정답
+  const given = normalizeTyped(answer);
+  if (!given) return { isCorrect: false };
+  return { isCorrect: acceptedAnswers(question).some((a) => normalizeTyped(a) === given) };
 }
 
 // 한도 적용 전 점수. 장문 타이핑은 기준 미달이어도 감점하지 않는다.

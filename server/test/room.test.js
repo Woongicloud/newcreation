@@ -361,3 +361,20 @@ describe('정답 참고 이미지', () => {
     expect(viewFor(room, ROLES.PLAYER, ids[0]).question.answerImage).toBe('/media/seoul.jpg');
   });
 });
+
+describe('복수 정답 채점', () => {
+  it('인정 답·띄어쓰기 다른 답 모두 정답 처리, 공개 때 인정 답 목록도 보여준다', () => {
+    const set = makeSet({ rounds: [{ gameMode: 'short_answer', questions: [{ content: '수제자는?', correctAnswer: '시몬 베드로', acceptAnswers: ['베드로'], timeLimit: 10 }] }] });
+    const { room, ids, p } = makeRoom({ set });
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    expect(viewFor(room, ROLES.HOST).question.acceptAnswers).toEqual(['베드로']);
+    expect(viewFor(room, ROLES.DISPLAY).question.acceptAnswers).toBeUndefined(); // 공개 전
+    room.submitAnswer(ids[0], '시몬베드로');
+    room.submitAnswer(ids[1], '베드로!');
+    room.submitAnswer(ids[2], '요한');
+    cmd(room, C.REVEAL);
+    // 오답 감점은 라운드 손실 한도(문제 1개 × 50 × 50% = 25)까지
+    expect([p(0).score, p(1).score, p(2).score]).toEqual([100, 100, -25]);
+    expect(viewFor(room, ROLES.DISPLAY).question).toMatchObject({ correctAnswer: '시몬 베드로', acceptAnswers: ['베드로'] });
+  });
+});

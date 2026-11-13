@@ -61,3 +61,35 @@ describe('판정과 점수', () => {
     expect(reactionPoints({ points: 70 }, 0)).toBe(70);
   });
 });
+
+describe('직접 입력 답 채점', () => {
+  const q = { correctAnswer: '시몬 베드로', acceptAnswers: ['베드로', 'Peter'], points: 5, penalty: 0 };
+  const judge = (a, question = q) => judgeAnswer(GAME_MODES.SHORT_ANSWER, question, a).isCorrect;
+
+  it('띄어쓰기·대소문자·문장부호를 무시한다', () => {
+    expect(judge('시몬베드로')).toBe(true);
+    expect(judge('  시 몬 베 드 로  ')).toBe(true);
+    expect(judge('시몬 베드로!')).toBe(true);
+    expect(judge('"시몬, 베드로."')).toBe(true);
+    expect(judge('ＰＥＴＥＲ')).toBe(true); // 전각
+  });
+
+  it('인정 답 중 하나와 같으면 정답', () => {
+    expect(judge('베드로')).toBe(true);
+    expect(judge('peter')).toBe(true);
+    expect(judge('바울')).toBe(false);
+    expect(judge('')).toBe(false);
+    expect(judge('!!!')).toBe(false);
+  });
+
+  it('문장부호만으로 된 정답도 비교할 수 있다', () => {
+    expect(judge('?', { correctAnswer: '?' })).toBe(true);
+    expect(judge('!', { correctAnswer: '?' })).toBe(false);
+  });
+
+  it('객관식은 고른 보기를 그대로 비교한다 (문장부호 무시 안 함)', () => {
+    const mc = { correctAnswer: 'A.', choices: ['A.', 'A'] };
+    expect(judgeAnswer(GAME_MODES.MULTIPLE_CHOICE, mc, 'A.').isCorrect).toBe(true);
+    expect(judgeAnswer(GAME_MODES.MULTIPLE_CHOICE, mc, 'A').isCorrect).toBe(false);
+  });
+});

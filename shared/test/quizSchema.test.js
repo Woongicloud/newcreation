@@ -126,3 +126,27 @@ describe('answerImage', () => {
     expect(errors.map((e) => e.path)).toEqual(['rounds[0].questions[0].answerImage', 'rounds[0].questions[0].answerNote']);
   });
 });
+
+describe('복수 정답', () => {
+  const sa = (q) => ({ rounds: [{ gameMode: 'short_answer', questions: [{ content: 'Q', ...q }] }] });
+
+  it('acceptAnswers 를 정리해서 받는다 (빈 칸·중복 제거)', async () => {
+    const { validateQuizSet: v } = await import('../quizSchema.js');
+    const { set } = v(sa({ correctAnswer: '베드로', acceptAnswers: ['시몬', ' 시몬 ', '', 7] }));
+    expect(set.rounds[0].questions[0]).toMatchObject({ correctAnswer: '베드로', acceptAnswers: ['시몬', '7'] });
+  });
+
+  it('정답을 배열로 적으면 첫 번째가 대표, 나머지는 인정 답', async () => {
+    const { validateQuizSet: v } = await import('../quizSchema.js');
+    const { set } = v(sa({ correctAnswer: ['서울', '서울특별시', 'Seoul'] }));
+    expect(set.rounds[0].questions[0]).toMatchObject({ correctAnswer: '서울', acceptAnswers: ['서울특별시', 'Seoul'] });
+  });
+
+  it('객관식에 넣으면 경고하고 무시, 잘못된 형식은 오류', async () => {
+    const { validateQuizSet: v } = await import('../quizSchema.js');
+    const mc = v({ rounds: [{ gameMode: 'multiple_choice', questions: [{ content: 'Q', choices: ['a', 'b'], correctAnswer: 'a', acceptAnswers: ['b'] }] }] });
+    expect(mc.set.rounds[0].questions[0].acceptAnswers).toBeUndefined();
+    expect(mc.warnings.some((w) => w.path.endsWith('acceptAnswers'))).toBe(true);
+    expect(v(sa({ correctAnswer: 'a', acceptAnswers: 'b' })).errors[0].path).toBe('rounds[0].questions[0].acceptAnswers');
+  });
+});

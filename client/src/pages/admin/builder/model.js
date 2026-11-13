@@ -70,6 +70,7 @@ export function convertQuestion(q, mode) {
     if (q[key] !== undefined && q[key] !== '') next[key] = q[key];
   }
   if (HAS_ANSWER(mode) && q.correctAnswer) next.correctAnswer = q.correctAnswer;
+  if ((MODE_FIELDS[mode] || []).includes('correctAnswer') && q.acceptAnswers?.length) next.acceptAnswers = q.acceptAnswers;
   if (CHOICE_MODES.has(mode) && Array.isArray(q.choices)) next.choices = q.choices;
   if (q.imageUrl && 'imageUrl' in next) next.imageUrl = q.imageUrl;
   if (q.imageUrl && 'imageUrls' in next) next.imageUrls = [q.imageUrl];
@@ -100,7 +101,7 @@ export function chosung(text) {
 }
 
 // 내보낼 때 빈 선택 항목은 뺀다 (필수 칸은 검사에서 걸리도록 그대로 둔다)
-const OPTIONAL = new Set(['points', 'penalty', 'answerImage', 'answerNote', 'imageUrl', 'audioUrl', 'passAccuracy', 'rankPoints', 'theme', 'emojiPool']);
+const OPTIONAL = new Set(['points', 'penalty', 'answerImage', 'answerNote', 'imageUrl', 'audioUrl', 'passAccuracy', 'rankPoints', 'theme', 'emojiPool', 'acceptAnswers']);
 export function cleanSet(set) {
   const clean = (obj) => {
     if (Array.isArray(obj)) return obj.map(clean);
@@ -108,6 +109,11 @@ export function cleanSet(set) {
     const out = {};
     for (const [k, v] of Object.entries(obj)) {
       if (OPTIONAL.has(k) && (v === '' || v === null || v === undefined || (Array.isArray(v) && v.length === 0))) continue;
+      if (k === 'acceptAnswers' && Array.isArray(v)) {
+        const list = v.map((a) => String(a).trim()).filter(Boolean);
+        if (list.length) out.acceptAnswers = list;
+        continue;
+      }
       if (k === 'imageUrls' && Array.isArray(v)) {
         const urls = v.filter((u) => u && u.trim());
         if (urls.length) out.imageUrls = urls;
