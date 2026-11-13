@@ -80,6 +80,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
   "question": { "id": "1:2", "number": 3, "gameMode": "consonant", "content": "…", "consonantHint": "ㅂㄷㄹㅎ",
                 "timeLimit": 20, "points": 150, "penalty": 50 },
                 // correctAnswer 는 진행자·관리자에게 항상, 나머지는 question_reveal 에서만
+                // answerImage·answerNote(정답 참고 사진·설명)는 모든 역할에 question_reveal 에서만
   "timer": { "deadlineAt": 1794400020000, "paused": false, "remainingMs": null },
                 // 매초 tick 은 없다. 화면이 deadlineAt - (now + 시계 차이) 로 계산
   "submittedCount": 12,

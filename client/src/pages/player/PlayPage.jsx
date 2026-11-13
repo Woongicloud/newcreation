@@ -91,6 +91,13 @@ function QuestionView({ state }) {
         {revealed && <FloatingScore key={`score-${question.id}`} result={me.result} answered={me.answered} gameMode={mode} />}
       </div>
 
+      {revealed && (question.answerImage || question.answerNote) && (
+        <div className="rounded-2xl bg-white/90 shadow p-3 space-y-2">
+          {question.answerImage && <img src={question.answerImage} alt="" className="w-full max-h-64 object-contain rounded-xl" />}
+          {question.answerNote && <p className="text-center text-slate-700 text-sm font-semibold">{question.answerNote}</p>}
+        </div>
+      )}
+
       {open && me.answered && mode !== GAME_MODES.EMOJI_FIND && (
         <p className="text-center text-slate-600 text-sm bg-white/70 rounded-xl py-2">제출 완료 — 정답 공개를 기다려주세요</p>
       )}

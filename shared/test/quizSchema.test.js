@@ -118,3 +118,11 @@ describe('validateQuizSet', () => {
     expect(set.rounds[0].questions[0]).toMatchObject({ points: 10, penalty: 5 });
   });
 });
+
+describe('answerImage', () => {
+  it('잘못된 값은 위치와 함께 알려준다', async () => {
+    const { validateQuizSet: v } = await import('../quizSchema.js');
+    const { errors } = v({ rounds: [{ gameMode: 'short_answer', questions: [{ content: 'Q', correctAnswer: 'a', answerImage: '', answerNote: 3 }] }] });
+    expect(errors.map((e) => e.path)).toEqual(['rounds[0].questions[0].answerImage', 'rounds[0].questions[0].answerNote']);
+  });
+});

@@ -272,6 +272,17 @@ export function validateQuizSet(raw) {
         else if (imageUrl) out.imageUrls = [imageUrl];
         if (IMAGE_MODES.has(mode) && !out.imageUrls) warn(`${qp}.imageUrl`, '이미지가 없습니다. 이미지 없이 출제됩니다.');
 
+        // 정답 공개 때 함께 보여줄 참고 이미지와 설명 (예: 정답 '서울' → 서울 사진)
+        if (q.answerImage !== undefined) {
+          const answerImage = resolveMediaUrl(q.answerImage);
+          if (answerImage) out.answerImage = answerImage;
+          else err(`${qp}.answerImage`, '이미지 경로(파일명 또는 https:// 주소)가 필요합니다.');
+        }
+        if (q.answerNote !== undefined) {
+          if (isStr(q.answerNote)) out.answerNote = q.answerNote.trim().slice(0, 200);
+          else err(`${qp}.answerNote`, '문자열이어야 합니다.');
+        }
+
         const audioUrl = resolveMediaUrl(q.audioUrl);
         if (audioUrl) out.audioUrl = audioUrl;
         if (mode === GAME_MODES.AUDIO_QUIZ && !audioUrl) err(`${qp}.audioUrl`, '오디오가 필요합니다.');

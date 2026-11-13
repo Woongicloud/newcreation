@@ -25,7 +25,7 @@
       "gameMode": "multiple_choice",
       "standingsAfter": true,
       "questions": [
-        { "content": "성경에서 가장 먼저 나오는 책은?", "choices": ["창세기", "출애굽기", "시편", "요한복음"], "correctAnswer": "창세기", "timeLimit": 15 },
+        { "content": "성경에서 가장 먼저 나오는 책은?", "choices": ["창세기", "출애굽기", "시편", "요한복음"], "correctAnswer": "창세기", "timeLimit": 15, "answerImage": "sample_image_2.svg", "answerNote": "성경 66권 중 첫 번째 책" },
         { "content": "예수님이 물로 만드신 것은?", "choices": ["빵", "포도주", "기름", "꿀"], "correctAnswer": "포도주", "timeLimit": 15 },
         { "content": "다음 중 12제자가 아닌 사람은?", "choices": ["베드로", "요한", "바울", "야고보"], "correctAnswer": "바울", "timeLimit": 15 },
         { "content": "보너스! 노아의 방주에 비가 내린 기간은?", "choices": ["7일", "40일", "100일", "1년"], "correctAnswer": "40일", "timeLimit": 15, "points": 15 }
@@ -36,7 +36,7 @@
       "gameMode": "consonant",
       "points": 8,
       "questions": [
-        { "content": "예수님이 태어나신 곳", "consonantHint": "ㅂㄷㄹㅎ", "correctAnswer": "베들레헴", "timeLimit": 20 },
+        { "content": "예수님이 태어나신 곳", "consonantHint": "ㅂㄷㄹㅎ", "correctAnswer": "베들레헴", "timeLimit": 20, "answerImage": "sample_image_1.svg", "answerNote": "예루살렘 남쪽의 작은 마을" },
         { "content": "다윗이 쓰러뜨린 거인", "consonantHint": "ㄱㄹㅇ", "correctAnswer": "골리앗", "timeLimit": 20 }
       ]
     },

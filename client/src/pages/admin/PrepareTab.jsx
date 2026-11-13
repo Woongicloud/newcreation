@@ -6,6 +6,7 @@ import { appUrl } from '../../lib/session.js';
 import { PHASE_LABEL, AWARD_TYPE_LABEL } from '../../lib/labels.js';
 import { ALL_PRACTICE } from '../../data/practice/index.js';
 import { Panel, btn, btnPrimary } from './ui.jsx';
+import QuestionMedia from './QuestionMedia.jsx';
 
 function CopyLink({ label, url }) {
   const [copied, setCopied] = useState(false);
@@ -20,7 +21,7 @@ function CopyLink({ label, url }) {
   );
 }
 
-export default function PrepareTab({ state, rooms, refreshRooms, createRoom, openRoom, closeRoom, flash, setTab }) {
+export default function PrepareTab({ state, token, rooms, refreshRooms, createRoom, openRoom, closeRoom, flash, setTab }) {
   const fileRef = useRef(null);
   const [report, setReport] = useState(null); // 세트 검증 결과
   const [hostUrl, setHostUrl] = useState('');
@@ -145,6 +146,8 @@ export default function PrepareTab({ state, rooms, refreshRooms, createRoom, ope
           </div>
         </Panel>
       )}
+
+      <QuestionMedia token={token} flash={flash} />
     </div>
   );
 }
