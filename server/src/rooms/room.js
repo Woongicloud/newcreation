@@ -50,6 +50,8 @@ export class Room extends EventEmitter {
     this.showMain = false;
     // Display 에서 재생할 음원. seq 가 바뀔 때마다 처음부터 다시 재생한다
     this.audio = { target: null, playing: false, seq: 0 };
+    // 경품 지급 체크 { 'a0:p:<playerId>' | 'a0:t:<팀키>': 체크한 시각 }
+    this.prizeChecks = {};
     this.settings = { ...DEFAULT_DISPLAY_SETTINGS };
     this.finishedAt = null;
     this._deadlineTimer = null;
@@ -110,8 +112,19 @@ export class Room extends EventEmitter {
     this.set = { ...this.set, awards: items };
     if (this.phase === PHASES.FINAL) {
       this.awards = { items: computeAwards(this.set, this.players.values(), this.events), index: -1, step: 0 };
+      this.prizeChecks = {}; // 결과가 다시 계산되므로 체크도 비운다
     }
     this._changed();
+    return ok();
+  }
+
+  // 경품 지급 체크 (진행 단계와 무관, 게임이 끝난 뒤에만)
+  setPrizeCheck(key, checked) {
+    if (!this.isFinished) return invalid('게임이 끝난 뒤에 체크할 수 있습니다.');
+    if (typeof key !== 'string' || !/^a\d+:(p|t):.{1,80}$/.test(key)) return fail(ERRORS.BAD_REQUEST, '잘못된 항목입니다.');
+    if (checked) this.prizeChecks[key] = Date.now();
+    else delete this.prizeChecks[key];
+    this.emit('state');
     return ok();
   }
 
@@ -753,6 +766,7 @@ export class Room extends EventEmitter {
       awards: this.awards,
       showMain: this.showMain,
       audio: this.audio,
+      prizeChecks: this.prizeChecks,
       settings: this.settings,
       finishedAt: this.finishedAt,
     };
@@ -771,7 +785,8 @@ export class Room extends EventEmitter {
     room.standings = state.standings || room.standings;
     room.awards = state.awards || null;
     room.showMain = !!state.showMain;
-    if (state.audio) room.audio = { ...state.audio, playing: false }; // 재시작 후 자동으로 다시 틀지 않는다
+    if (state.audio) room.audio = { ...state.audio, playing: false };
+    room.prizeChecks = state.prizeChecks || {}; // 재시작 후 자동으로 다시 틀지 않는다
     room.settings = { ...DEFAULT_DISPLAY_SETTINGS, ...state.settings };
     room.finishedAt = state.finishedAt || null;
     const c = state.current;

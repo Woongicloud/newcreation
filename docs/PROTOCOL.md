@@ -100,8 +100,8 @@ lobby → round_intro → question_open → question_closed → question_reveal
 |---|---|
 | 참가자 | `me { id, name, group, unit, score, rank, answered, answer, result, emoji }` — `answer`는 본인이 낸 답, `result`는 공개 후에만 |
 | Display | `lobby [{ name, group, unit }]` (대기실에서만) |
-| 진행자·관리자 | `next { action, content?, correctAnswer?, theme?, title? }`, `outline` (순서표), `awardConfig` (시상 세트 구성), `awardList`·`awardIndex` (종료 후 결과), `award.result` (공개 전 전체 결과) |
-| 관리자 | `players [{ id, name, group, unit, score, online, rank }]` |
+| 진행자·관리자 | `next { action, content?, correctAnswer?, theme?, title? }`, `outline` (순서표), `awardConfig` (시상 세트 구성), `awardList`·`awardIndex` (종료 후 결과 — 팀 순위 항목에는 `roster [{ id, name }]` 팀원 명단, 개인 항목에는 `id`), `award.result` (공개 전 전체 결과) |
+| 관리자 | `players [{ id, name, group, unit, score, online, rank }]`, `prizeChecks { [key]: 체크한 시각 }` (게임 종료 후) |
 
 그 밖의 서버 → 클라이언트 이벤트
 
@@ -127,6 +127,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 | `admin:update_player` / `admin:remove_player` | 관리자 | 이름·소속 수정 / 내보내기 |
 | `admin:host_token { roomCode }` | 관리자 | 진행자 링크용 토큰 |
 | `admin:list_rooms` / `admin:close_room` | 관리자 | 방 목록 / 방 닫기 |
+| `admin:prize_check { roomCode, key, checked }` | 관리자 | 경품 지급 체크 (게임 종료 후). `key` = `a{시상 순번}:p:{참가자 id}` 또는 `a{시상 순번}:t:{학년/브릿지}`. 진행 단계(`step`)는 바뀌지 않는다 |
 
 HTTP
 

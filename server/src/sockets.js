@@ -247,6 +247,7 @@ export function attachSockets(io, registry) {
       if (!result.ok) return { ok: false, error: ERRORS.BAD_REQUEST, message: '시상 세트에 오류가 있습니다.', errors: result.errors };
       return room.setAwards(result.awards);
     }));
+    on(EVENTS.ADMIN_PRIZE_CHECK, withRoom((room, { key, checked }) => room.setPrizeCheck(key, !!checked)));
     on(EVENTS.ADMIN_UPDATE_PLAYER, withRoom((room, { playerId, name, group, unit }) => room.updatePlayer(playerId, { name, group, unit })));
     on(EVENTS.ADMIN_REMOVE_PLAYER, withRoom((room, { playerId }) => {
       const result = room.removePlayer(playerId);

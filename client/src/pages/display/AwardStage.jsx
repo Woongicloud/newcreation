@@ -7,6 +7,13 @@ import StandingsBoard from './StandingsBoard.jsx';
 const who = (e, team) => (team ? [e.group, e.name].filter(Boolean).join(' ') : e.name);
 const sub = (e, team) => (team ? `${e.members}명` : [e.group, e.unit].filter(Boolean).join(' '));
 
+// 팀 시상의 팀원 명단 (경품을 받을 사람들이 화면에서 바로 확인할 수 있게)
+const Roster = ({ e, style }) => (e.roster?.length ? (
+  <p className="font-bold leading-snug opacity-80 line-clamp-2" style={style}>
+    {e.roster.map((m) => m.name).join(' · ')}
+  </p>
+) : null);
+
 function RankRow({ e, team, big }) {
   const medal = ['🥇', '🥈', '🥉'][e.rank - 1];
   return (
@@ -15,19 +22,22 @@ function RankRow({ e, team, big }) {
       initial={{ opacity: 0, y: 40, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', damping: 16 }}
-      className="flex items-center gap-[2vw] rounded-[1.2vw] px-[3vw] border"
+      className="rounded-[1.2vw] px-[3vw] border"
       style={{
         background: e.rank === 1 ? 'var(--d-accent)' : 'var(--d-panel)',
         color: e.rank === 1 ? 'var(--d-on-accent)' : 'var(--d-fg)',
         borderColor: 'var(--d-border)',
         fontSize: big ? '3.4vw' : '2.6vw',
-        padding: big ? '1.6vw 3vw' : '1vw 3vw',
+        padding: big ? '1.4vw 3vw' : '0.9vw 3vw',
       }}
     >
-      <span className="font-black w-[6vw] text-center">{medal || e.rank}</span>
-      <span className="flex-1 font-black truncate">{who(e, team)}</span>
-      <span className="opacity-70 truncate" style={{ fontSize: '0.65em' }}>{sub(e, team)}</span>
-      <span className="font-black font-mono tabular-nums">{e.score.toLocaleString()}</span>
+      <div className="flex items-center gap-[2vw]">
+        <span className="font-black w-[6vw] text-center">{medal || e.rank}</span>
+        <span className="flex-1 font-black truncate">{who(e, team)}</span>
+        <span className="opacity-70 truncate" style={{ fontSize: '0.65em' }}>{sub(e, team)}</span>
+        <span className="font-black font-mono tabular-nums">{e.score.toLocaleString()}</span>
+      </div>
+      {team && <Roster e={e} style={{ fontSize: '1.4vw', paddingLeft: '8vw', marginTop: '0.3vw' }} />}
     </motion.div>
   );
 }
@@ -66,6 +76,7 @@ function Podium({ revealed }) {
                     <p style={{ fontSize: '4vw' }}>{['🥇', '🥈', '🥉'][rank - 1]}</p>
                     <p className="font-black truncate max-w-[20vw]" style={{ fontSize: rank === 1 ? '3.4vw' : '2.6vw' }}>{who(e, revealed.team)}</p>
                     <p style={{ fontSize: '1.4vw', color: 'var(--d-muted)' }}>{sub(e, revealed.team)}</p>
+                    {revealed.team && <Roster e={e} style={{ fontSize: '1.2vw', maxWidth: '20vw' }} />}
                     <p className="font-black font-mono" style={{ fontSize: '2vw', color: 'var(--d-accent)' }}>{e.score.toLocaleString()}</p>
                   </motion.div>
                 )}
