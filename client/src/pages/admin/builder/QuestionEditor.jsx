@@ -10,7 +10,10 @@ const box = `${input} w-full`;
 // 이미지·오디오 주소 입력 + 미리보기 + 올린 파일에서 고르기
 export function MediaField({ title, value, onChange, files, kind = 'image', placeholder }) {
   const [picking, setPicking] = useState(false);
+  // ⑥ 파일 탭에서 올린 것 중 이 칸에 맞는 종류만
+  const choices = (files || []).filter((f) => f.folder !== 'backgrounds' && f.type === kind);
   const url = value?.trim();
+  const picked = (files || []).find((f) => f.publicUrl === url);
   const preview = url && (url.startsWith('http') || url.startsWith('/')) ? url : url ? `/media/${url}` : null;
   return (
     <div>
@@ -18,18 +21,30 @@ export function MediaField({ title, value, onChange, files, kind = 'image', plac
       <div className="flex gap-2 items-start">
         <input className={`${box} flex-1`} value={value || ''} placeholder={placeholder || '파일명(media 폴더) 또는 https:// 주소'}
           onChange={(e) => onChange(e.target.value)} />
-        {files?.length > 0 && kind === 'image' && <button type="button" className={btn} onClick={() => setPicking((v) => !v)}>올린 이미지</button>}
+        {choices.length > 0 && <button type="button" className={btn} onClick={() => setPicking((v) => !v)}>{kind === 'audio' ? '올린 음원' : '올린 사진'}</button>}
       </div>
-      {picking && (
-        <div className="mt-2 grid grid-cols-4 md:grid-cols-8 gap-1 max-h-40 overflow-y-auto rounded-lg bg-slate-950 p-1">
-          {files.map((f) => (
-            <button type="button" key={f.path} onClick={() => { onChange(f.publicUrl); setPicking(false); }}
-              className="h-14 rounded overflow-hidden border border-slate-700 hover:border-sky-400">
-              <img src={f.publicUrl} alt="" className="w-full h-full object-cover" />
+      {picking && kind === 'image' && (
+        <div className="mt-2 grid grid-cols-4 md:grid-cols-8 gap-1 max-h-48 overflow-y-auto rounded-lg bg-slate-950 p-1">
+          {choices.map((f) => (
+            <button type="button" key={f.path} title={f.name} onClick={() => { onChange(f.publicUrl); setPicking(false); }}
+              className="rounded overflow-hidden border border-slate-700 hover:border-sky-400 text-left">
+              <img src={f.publicUrl} alt="" className="w-full h-14 object-cover" />
+              <span className="block text-[10px] truncate px-1 text-slate-400">{f.name}</span>
             </button>
           ))}
         </div>
       )}
+      {picking && kind === 'audio' && (
+        <div className="mt-2 max-h-48 overflow-y-auto rounded-lg bg-slate-950 p-1 space-y-1">
+          {choices.map((f) => (
+            <button type="button" key={f.path} onClick={() => { onChange(f.publicUrl); setPicking(false); }}
+              className="w-full text-left px-2 py-1.5 rounded border border-slate-800 hover:border-sky-400 text-sm truncate">
+              🎵 {f.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {picked && <p className="text-xs text-slate-400 mt-1">📎 {picked.name}</p>}
       {preview && kind === 'image' && <img src={preview} alt="" className="mt-2 h-20 rounded border border-slate-700 object-contain bg-slate-950" />}
       {preview && kind === 'audio' && <audio src={preview} controls className="mt-2 h-8 w-full" />}
     </div>

@@ -9,6 +9,7 @@ import RunTab from './RunTab.jsx';
 import SettingsTab from './SettingsTab.jsx';
 import AwardsTab from './AwardsTab.jsx';
 import SetBuilder from './builder/SetBuilder.jsx';
+import MediaTab from './MediaTab.jsx';
 
 const TABS = [
   ['prepare', '① 준비'],
@@ -16,9 +17,10 @@ const TABS = [
   ['settings', '③ 표시 설정'],
   ['awards', '④ 시상'],
   ['builder', '⑤ 문제 만들기'],
+  ['media', '⑥ 파일'],
 ];
 // 방이 없어도 열 수 있는 탭
-const ROOMLESS = new Set(['prepare', 'builder']);
+const ROOMLESS = new Set(['prepare', 'builder', 'media']);
 
 function Login({ onDone }) {
   const [password, setPassword] = useState('');
@@ -155,6 +157,7 @@ export default function AdminPage() {
         {tab === 'settings' && state && <SettingsTab {...ctx} />}
         {tab === 'awards' && state && <AwardsTab {...ctx} />}
         {tab === 'builder' && <SetBuilder {...ctx} />}
+        {tab === 'media' && <MediaTab {...ctx} />}
       </main>
     </div>
   );

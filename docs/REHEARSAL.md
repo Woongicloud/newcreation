@@ -5,6 +5,8 @@
 
 ## 0. 서버 상태 (1분)
 
+- [ ] (한 번만) Supabase SQL Editor에서 `supabase/migrations/002_media_files.sql` 실행 — ⑥ 파일 탭의 파일 이름 저장용. 실행 전에는 ⑥ 파일 탭에 안내가 뜬다
+
 - [ ] `https://서버주소/api/health` → `"storage":"supabase"`, `"database":"ok"`
   - `"database":"error"`면 함께 나오는 `databaseError`가 원인이다
   - `"storage":"memory"`면 Railway에 `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`가 없다

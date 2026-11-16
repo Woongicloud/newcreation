@@ -74,6 +74,18 @@ CREATE TABLE chat_logs (
 );
 CREATE INDEX idx_chat_session ON chat_logs(session_id);
 
+-- 레크레이션용 파일의 표시 이름 (파일 자체는 Storage 버킷 media). migrations/002_media_files.sql 과 같다
+CREATE TABLE IF NOT EXISTS media_files (
+  path        TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  folder      TEXT NOT NULL,
+  size        BIGINT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_media_files_folder ON media_files(folder);
+ALTER TABLE media_files ENABLE ROW LEVEL SECURITY;
+
 -- 서버(service_role 키)만 읽고 쓴다. 정책을 두지 않아 브라우저의 anon 키로는 접근할 수 없다.
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;

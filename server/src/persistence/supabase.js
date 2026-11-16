@@ -2,6 +2,12 @@
 import { createClient } from '@supabase/supabase-js';
 
 const MEDIA_BUCKET = 'media';
+
+// media_files 테이블이 아직 없으면(마이그레이션 전) 이름 기능만 꺼지도록 구분한다
+function catalogError(error) {
+  const missing = error.code === '42P01' || error.code === 'PGRST205' || /does not exist|schema cache/i.test(error.message || '');
+  return Object.assign(new Error(`[db] media_files: ${error.message}`), missing ? { code: 'CATALOG_MISSING' } : {});
+}
 const RESTORE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function createSupabasePersistence({ url, serviceKey }) {
@@ -117,7 +123,7 @@ export function createSupabasePersistence({ url, serviceKey }) {
       return out;
     },
 
-    // 배경·문제용 미디어 (Supabase Storage). 관리자 브라우저가 서명 URL 로 직접 올린다.
+    // 레크레이션용 파일 (Supabase Storage + 이름 목록 테이블 media_files). 관리자 브라우저가 서명 URL 로 직접 올린다.
     media: {
       async createUploadUrl(path) {
         const { data, error } = await db.storage.from(MEDIA_BUCKET).createSignedUploadUrl(path);
@@ -129,19 +135,40 @@ export function createSupabasePersistence({ url, serviceKey }) {
           publicUrl: db.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl,
         };
       },
-      async list(prefix = '') {
+      async listObjects(folder) {
         const { data, error } = await db.storage.from(MEDIA_BUCKET)
-          .list(prefix, { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+          .list(folder, { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
         if (error) throw new Error(`[storage] ${error.message}`);
         return data.filter((f) => f.id).map((f) => {
-          const path = prefix ? `${prefix}/${f.name}` : f.name;
+          const path = `${folder}/${f.name}`;
           return {
             path,
-            name: f.name,
             size: f.metadata?.size ?? null,
+            createdAt: f.created_at ?? null,
             publicUrl: db.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl,
           };
         });
+      },
+      async removeObject(path) {
+        const { error } = await db.storage.from(MEDIA_BUCKET).remove([path]);
+        if (error) throw new Error(`[storage] ${error.message}`);
+      },
+      catalog: {
+        async list() {
+          const { data, error } = await db.from('media_files').select('path, name');
+          if (error) throw catalogError(error);
+          return data;
+        },
+        async upsert({ path, name, folder, size }) {
+          const row = { path, name, folder, updated_at: new Date().toISOString() };
+          if (size !== undefined) row.size = size;
+          const { error } = await db.from('media_files').upsert(row);
+          if (error) throw catalogError(error);
+        },
+        async remove(path) {
+          const { error } = await db.from('media_files').delete().eq('path', path);
+          if (error) throw catalogError(error);
+        },
       },
     },
   };
