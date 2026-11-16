@@ -10,6 +10,7 @@ import SettingsTab from './SettingsTab.jsx';
 import AwardsTab from './AwardsTab.jsx';
 import SetBuilder from './builder/SetBuilder.jsx';
 import MediaTab from './MediaTab.jsx';
+import PrizeTab from './PrizeTab.jsx';
 
 const TABS = [
   ['prepare', '① 준비'],
@@ -18,6 +19,7 @@ const TABS = [
   ['awards', '④ 시상'],
   ['builder', '⑤ 문제 만들기'],
   ['media', '⑥ 파일'],
+  ['prize', '⑦ 경품'],
 ];
 // 방이 없어도 열 수 있는 탭
 const ROOMLESS = new Set(['prepare', 'builder', 'media']);
@@ -127,9 +129,9 @@ export default function AdminPage() {
   const ctx = { state, token, flash, rooms, refreshRooms, createRoom, openRoom, closeRoom, setTab };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-100 print:bg-white print:text-black">
       <ConnectionBanner />
-      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 print:hidden">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
           <h1 className="font-bold text-lg">🛠 관리자</h1>
           {state ? (
@@ -158,6 +160,7 @@ export default function AdminPage() {
         {tab === 'awards' && state && <AwardsTab {...ctx} />}
         {tab === 'builder' && <SetBuilder {...ctx} />}
         {tab === 'media' && <MediaTab {...ctx} />}
+        {tab === 'prize' && state && <PrizeTab {...ctx} />}
       </main>
     </div>
   );

@@ -3,7 +3,8 @@
 
 import { rankPlayers, teamScores, isParticipant, unitKey, groupKey } from './standings.js';
 
-const brief = (e) => ({ rank: e.rank, name: e.name, group: e.group, unit: e.unit, score: e.score });
+// id 는 경품 지급 목록에서 사람을 구분하는 데 쓴다
+const brief = (e) => ({ id: e.playerId ?? e.id, rank: e.rank, name: e.name, group: e.group, unit: e.unit, score: e.score });
 
 function rankingSections(entries, scope, top) {
   const cut = (list) => (top ? list.slice(0, top) : list);
@@ -42,12 +43,12 @@ export function computeAwards(set, players, events) {
       result = { kind: 'ranking', sections: rankingSections(ranked.map(brief), item.scope, item.top) };
     } else if (item.type === 'group_ranking') {
       const teams = teamScores(list, groupKey, teamOpts)
-        .map((t) => ({ rank: t.rank, name: t.key, score: t.score, members: t.members }));
+        .map((t) => ({ key: t.key, rank: t.rank, name: t.key, score: t.score, members: t.members, roster: t.roster }));
       result = { kind: 'ranking', team: true, sections: [{ label: null, entries: item.top ? teams.slice(0, item.top) : teams }] };
     } else if (item.type === 'unit_ranking') {
       const teams = teamScores(list, unitKey, teamOpts).map((t) => {
         const [group, unit] = t.key.split('/');
-        return { rank: t.rank, name: unit, group, score: t.score, members: t.members };
+        return { key: t.key, rank: t.rank, name: unit, group, score: t.score, members: t.members, roster: t.roster };
       });
       let sections;
       if (item.scope === 'group') {
@@ -118,7 +119,7 @@ export function drawWinners(players, count, rng = Math.random) {
   const picked = [];
   while (picked.length < count && pool.length > 0) {
     const [p] = pool.splice(Math.floor(rng() * pool.length), 1);
-    picked.push({ name: p.name, group: p.group, unit: p.unit, score: p.score });
+    picked.push({ id: p.id, name: p.name, group: p.group, unit: p.unit, score: p.score });
   }
   return picked;
 }

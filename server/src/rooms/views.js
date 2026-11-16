@@ -218,6 +218,7 @@ export function viewFor(room, role, playerId, ctx = buildContext(room)) {
   }
   if (role === ROLES.ADMIN) {
     view.players = ctx.ranked.map((e) => playerRow(room.players.get(e.playerId), e.rank));
+    if (room.isFinished) view.prizeChecks = room.prizeChecks;
   }
   return view;
 }

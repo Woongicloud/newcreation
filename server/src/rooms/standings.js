@@ -37,9 +37,10 @@ export function teamScores(players, keyOf, { method = 'adjusted', weight = 3 } =
   for (const p of active) {
     const key = keyOf(p);
     if (key === null || key === undefined || key === '') continue;
-    const t = teams.get(key) || { key, sum: 0, members: 0 };
+    const t = teams.get(key) || { key, sum: 0, members: 0, roster: [] };
     t.sum += p.score;
     t.members += 1;
+    t.roster.push({ id: p.id, name: p.name });
     teams.set(key, t);
   }
 
@@ -52,7 +53,9 @@ export function teamScores(players, keyOf, { method = 'adjusted', weight = 3 } =
       else exact = (t.sum + weight * globalAvg) / (t.members + weight);
       // 문제당 점수가 작아(5점 등) 정수로 반올림하면 팀끼리 같아 보이므로 소수 첫째 자리까지
       const round1 = (v) => Math.round(v * 10) / 10;
-      return { key: t.key, exact, score: round1(exact), members: t.members, average: round1(average) };
+      // 명단: 점수에 들어간 팀원 (시상 화면·경품 목록용), 이름순
+      const roster = t.roster.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      return { key: t.key, exact, score: round1(exact), members: t.members, average: round1(average), roster };
     })
     .sort((a, b) => b.exact - a.exact || b.average - a.average || String(a.key).localeCompare(String(b.key)))
     .map(({ exact, ...t }, i) => ({ rank: i + 1, ...t }));

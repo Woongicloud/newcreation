@@ -4,6 +4,7 @@ import { teamScores, rankPlayers, unitKey } from '../src/rooms/standings.js';
 import { computeAwards, drawWinners, revealedPart } from '../src/rooms/awards.js';
 import { viewFor } from '../src/rooms/views.js';
 import { makeRoom, makeSet, mc, cmd } from './helpers.js';
+import { Room } from '../src/rooms/room.js';
 
 const player = (name, group, unit, score, extra = {}) => ({
   id: name, name, group, unit, score, totalResponseMs: 1000, submitCount: 1, chatCount: 0, joinedAt: 0, ...extra,
@@ -144,6 +145,52 @@ describe('시상 진행', () => {
 
     expect(cmd(room, C.SHOW_MAIN).ok).toBe(true);
     expect(viewFor(room, ROLES.DISPLAY)).toMatchObject({ showMain: true, phase: PHASES.AWARDS });
+  });
+});
+
+describe('시상 명단과 경품 지급 체크', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('팀 순위에 점수에 들어간 팀원 명단이 붙는다 (이름순, 미제출자 제외)', () => {
+    const players = [
+      player('하늘', '중1', 'A', 300), player('가람', '중1', 'A', 100),
+      player('나래', '중1', 'B', 200), player('쉰사람', '중1', 'B', 0, { submitCount: 0 }),
+    ];
+    const [units] = computeAwards(makeSet({ awards: { items: [{ type: 'unit_ranking' }] } }), players, []);
+    const rows = units.result.sections[0].entries;
+    expect(rows.map((r) => [r.key, r.members, r.roster.map((m) => m.name)])).toEqual([
+      ['중1/A', 2, ['가람', '하늘']],
+      ['중1/B', 1, ['나래']],
+    ]);
+    expect(rows[0].roster[0]).toHaveProperty('id', '가람');
+  });
+
+  it('개인 시상·추첨 결과에 사람을 구분할 id 가 있다', () => {
+    const players = [player('가', '중1', 'A', 300), player('나', '중1', 'B', 200)];
+    const [ind] = computeAwards(makeSet({ awards: { items: [{ type: 'individual_ranking', top: 2 }] } }), players, []);
+    expect(ind.result.sections[0].entries.map((e) => e.id)).toEqual(['가', '나']);
+    expect(drawWinners(players, 1, () => 0)[0].id).toBe('가');
+  });
+
+  it('경품 체크는 게임이 끝난 뒤 관리자만 보고, 저장·복구된다', () => {
+    const set = makeSet({ rounds: [{ gameMode: 'multiple_choice', questions: [mc()] }] });
+    const { room, ids } = makeRoom({ set });
+    expect(room.setPrizeCheck('a0:t:중1/A', true).ok).toBe(false); // 게임 중
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    ids.forEach((id) => room.submitAnswer(id, 'a'));
+    cmd(room, C.END_GAME);
+    const step = room.step;
+    expect(room.setPrizeCheck('a0:t:중1/A', true).ok).toBe(true);
+    expect(room.setPrizeCheck(`a2:p:${ids[0]}`, true).ok).toBe(true);
+    expect(room.setPrizeCheck('bad key', true).ok).toBe(false);
+    expect(room.step).toBe(step); // 진행 단계는 그대로
+    expect(Object.keys(viewFor(room, ROLES.ADMIN).prizeChecks)).toEqual(['a0:t:중1/A', `a2:p:${ids[0]}`]);
+    expect(viewFor(room, ROLES.HOST).prizeChecks).toBeUndefined();
+    room.setPrizeCheck('a0:t:중1/A', false);
+    expect(Object.keys(room.prizeChecks)).toEqual([`a2:p:${ids[0]}`]);
+    const restored = Room.fromSnapshot(JSON.parse(JSON.stringify({ id: room.id, roomCode: room.roomCode, set: room.set, state: room.toSnapshot(), events: room.events })));
+    expect(Object.keys(restored.prizeChecks)).toEqual([`a2:p:${ids[0]}`]);
   });
 });
 

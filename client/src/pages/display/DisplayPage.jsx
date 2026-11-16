@@ -122,9 +122,9 @@ function RevealCard({ question, stats }) {
   const answer = (
     <>
       <p className="font-bold opacity-80" style={{ fontSize: '2vw' }}>{label}</p>
-      <p className="font-black leading-tight break-keep" style={{ fontSize: image ? (long ? '3.6vw' : '5.4vw') : (long ? '5vw' : '8vw') }}>
-        {choiceIdx >= 0 && <span className="mr-[1.2vw]">{CHOICE_LABELS[choiceIdx]}</span>}
-        {body}
+      <p className="leading-tight break-keep" style={{ fontSize: image ? (long ? '3.6vw' : '5.4vw') : (long ? '5vw' : '8vw') }}>
+        {choiceIdx >= 0 && <span className="mr-[1.2vw] font-black">{CHOICE_LABELS[choiceIdx]}</span>}
+        <span className={label === '정답' ? 'font-answer' : 'font-black'}>{body}</span>
       </p>
       {question.acceptAnswers?.length > 0 && (
         <p className="font-bold opacity-80 mt-[0.4vw]" style={{ fontSize: '1.8vw' }}>또는 {question.acceptAnswers.join(' · ')}</p>
@@ -232,7 +232,7 @@ function QuestionScreen({ state }) {
           <p className="font-black tracking-[0.4em] text-center" style={{ fontSize: '5vw', color: 'var(--d-accent)' }}>{question.consonantHint}</p>
         )}
 
-        <p className="font-black leading-snug whitespace-pre-wrap" style={{ fontSize: mode === GAME_MODES.LONG_TYPING ? '2vw' : '3.3vw' }}>
+        <p className="font-question leading-snug whitespace-pre-wrap" style={{ fontSize: mode === GAME_MODES.LONG_TYPING ? '2.2vw' : '3.6vw' }}>
           {question.content}
         </p>
 
