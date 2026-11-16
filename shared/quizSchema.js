@@ -297,6 +297,11 @@ export function validateQuizSet(raw) {
           if (answerImage) out.answerImage = answerImage;
           else err(`${qp}.answerImage`, '이미지 경로(파일명 또는 https:// 주소)가 필요합니다.');
         }
+        if (q.answerAudio !== undefined) {
+          const answerAudio = resolveMediaUrl(q.answerAudio);
+          if (answerAudio) out.answerAudio = answerAudio;
+          else err(`${qp}.answerAudio`, '음원 경로(파일명 또는 https:// 주소)가 필요합니다.');
+        }
         if (q.answerNote !== undefined) {
           if (isStr(q.answerNote)) out.answerNote = q.answerNote.trim().slice(0, 200);
           else err(`${qp}.answerNote`, '문자열이어야 합니다.');

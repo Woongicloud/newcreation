@@ -43,7 +43,7 @@ export const MODE_HINT = {
   [M.IMAGE_QUIZ]: '이미지를 보고 정답을 입력하는 문제입니다.',
   [M.IMAGE_MULTIPLE_CHOICE]: '이미지를 보고 보기 중에서 고르는 문제입니다.',
   [M.IMAGE_MEMORY]: '이미지(여러 장 가능)를 보며 보기 중에서 고르는 문제입니다.',
-  [M.AUDIO_QUIZ]: '음악·소리는 프로젝터에서 재생됩니다.',
+  [M.AUDIO_QUIZ]: '음악은 프로젝터에서만 나옵니다. 진행자가 "음원 재생"을 눌러 틀고, 정답 공개 때는 "정답 음원"(선택)이 자동 재생됩니다.',
   [M.REACTION]: '신호가 뜨면 빨리 누르기. 순위 점수는 라운드 설정에서 정합니다.',
   [M.EMOJI_FIND]: '같은 이모지 세트를 가진 사람의 코드를 찾아 입력합니다. 정답 입력은 필요 없습니다.',
   [M.LONG_TYPING]: '원문은 프로젝터에만 보이고, 참가자는 따라 입력합니다.',
@@ -66,7 +66,7 @@ export function newQuestion(mode) {
 // 모드를 바꿀 때 공통 내용(문제·시간·점수·정답 사진)은 살리고 나머지는 새 모드 기본값으로
 export function convertQuestion(q, mode) {
   const next = newQuestion(mode);
-  for (const key of ['content', 'timeLimit', 'points', 'penalty', 'answerImage', 'answerNote']) {
+  for (const key of ['content', 'timeLimit', 'points', 'penalty', 'answerImage', 'answerAudio', 'answerNote']) {
     if (q[key] !== undefined && q[key] !== '') next[key] = q[key];
   }
   if (HAS_ANSWER(mode) && q.correctAnswer) next.correctAnswer = q.correctAnswer;
@@ -101,7 +101,7 @@ export function chosung(text) {
 }
 
 // 내보낼 때 빈 선택 항목은 뺀다 (필수 칸은 검사에서 걸리도록 그대로 둔다)
-const OPTIONAL = new Set(['points', 'penalty', 'answerImage', 'answerNote', 'imageUrl', 'audioUrl', 'passAccuracy', 'rankPoints', 'theme', 'emojiPool', 'acceptAnswers']);
+const OPTIONAL = new Set(['points', 'penalty', 'answerImage', 'answerNote', 'imageUrl', 'audioUrl', 'passAccuracy', 'rankPoints', 'theme', 'emojiPool', 'acceptAnswers', 'answerAudio']);
 export function cleanSet(set) {
   const clean = (obj) => {
     if (Array.isArray(obj)) return obj.map(clean);

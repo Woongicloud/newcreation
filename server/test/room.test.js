@@ -378,3 +378,63 @@ describe('복수 정답 채점', () => {
     expect(viewFor(room, ROLES.DISPLAY).question).toMatchObject({ correctAnswer: '시몬 베드로', acceptAnswers: ['베드로'] });
   });
 });
+
+describe('음원 — Display 에서만, 진행자가 재생', () => {
+  const audioSet = () => makeSet({ rounds: [{ gameMode: 'audio_quiz', questions: [
+    { content: '이 곡은?', audioUrl: 'intro.mp3', answerAudio: 'full.mp3', correctAnswer: '나의 하나님', timeLimit: 20 },
+    { content: '이 곡은?', audioUrl: 'b.mp3', correctAnswer: 'x', timeLimit: 20 },
+  ] }] });
+
+  it('문제가 열려도 자동 재생하지 않고, 재생·정지 명령으로 Display 가 따른다', () => {
+    const { room, ids } = makeRoom({ set: audioSet() });
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    let display = viewFor(room, ROLES.DISPLAY);
+    expect(display.audio).toMatchObject({ playing: false });
+    expect(display.question.audioUrl).toBe('/media/intro.mp3');
+    // 참가자 폰에는 음원 주소를 보내지 않는다
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).question.audioUrl).toBeUndefined();
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).question.hasAudio).toBe(true);
+
+    const step = room.step;
+    expect(cmd(room, C.AUDIO_PLAY, { target: 'question' }).ok).toBe(true);
+    display = viewFor(room, ROLES.DISPLAY);
+    expect(display.audio).toMatchObject({ target: 'question', playing: true });
+    const seq = display.audio.seq;
+    expect(room.step).toBe(step); // 진행 단계는 그대로 — 다른 기기의 '다음'이 막히지 않는다
+    cmd(room, C.AUDIO_PLAY, { target: 'question' }); // 다시 재생 = 처음부터
+    expect(viewFor(room, ROLES.DISPLAY).audio.seq).toBe(seq + 1);
+    cmd(room, C.AUDIO_STOP);
+    expect(viewFor(room, ROLES.DISPLAY).audio.playing).toBe(false);
+    // 정답 음원은 공개 전에 틀 수 없다
+    expect(cmd(room, C.AUDIO_PLAY, { target: 'answer' }).ok).toBe(false);
+  });
+
+  it('정답 공개 때 정답 음원을 자동 재생하고, 주소는 공개 때만 Display 로 간다', () => {
+    const { room, ids } = makeRoom({ set: audioSet() });
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    expect(viewFor(room, ROLES.DISPLAY).question.answerAudio).toBeUndefined();
+    ids.forEach((id) => room.submitAnswer(id, '나의 하나님'));
+    expect(viewFor(room, ROLES.DISPLAY).question.answerAudio).toBeUndefined(); // 마감 후에도 공개 전
+    cmd(room, C.REVEAL);
+    const display = viewFor(room, ROLES.DISPLAY);
+    expect(display.question.answerAudio).toBe('/media/full.mp3');
+    expect(display.audio).toMatchObject({ target: 'answer', playing: true });
+    expect(viewFor(room, ROLES.PLAYER, ids[0]).question.answerAudio).toBeUndefined();
+    // 다음 문제로 가면 멈추고, 정답 음원이 없는 문제는 공개해도 틀지 않는다
+    cmd(room, C.NEXT);
+    expect(viewFor(room, ROLES.DISPLAY).audio.playing).toBe(false);
+    ids.forEach((id) => room.submitAnswer(id, 'x'));
+    cmd(room, C.REVEAL);
+    expect(viewFor(room, ROLES.DISPLAY).audio.playing).toBe(false);
+    // 라운드가 끝나면 음원 정보도 내려가지 않는다
+    cmd(room, C.NEXT);
+    expect(viewFor(room, ROLES.DISPLAY).audio).toBeNull();
+  });
+
+  it('문제 밖이나 음원 없는 문제에서는 재생할 수 없다', () => {
+    const { room } = makeRoom();
+    expect(cmd(room, C.AUDIO_PLAY).ok).toBe(false);
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    expect(cmd(room, C.AUDIO_PLAY, { target: 'question' })).toMatchObject({ ok: false, message: '이 문제에는 음원이 없습니다.' });
+  });
+});

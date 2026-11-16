@@ -48,6 +48,8 @@ export class Room extends EventEmitter {
     this.standings = { visible: false, scope: 'total', entries: [] };
     this.awards = null;         // { items, index, step }
     this.showMain = false;
+    // Display 에서 재생할 음원. seq 가 바뀔 때마다 처음부터 다시 재생한다
+    this.audio = { target: null, playing: false, seq: 0 };
     this.settings = { ...DEFAULT_DISPLAY_SETTINGS };
     this.finishedAt = null;
     this._deadlineTimer = null;
@@ -226,6 +228,8 @@ export class Room extends EventEmitter {
       case COMMANDS.AWARD_STEP: return this._awardStep();
       case COMMANDS.SHOW_MAIN: return this._setMain(true);
       case COMMANDS.HIDE_MAIN: return this._setMain(false);
+      case COMMANDS.AUDIO_PLAY: return this._playAudio(args.target);
+      case COMMANDS.AUDIO_STOP: return this._stopAudio();
       default: return fail(ERRORS.BAD_REQUEST, `알 수 없는 명령입니다: ${type}`);
     }
   }
@@ -307,6 +311,8 @@ export class Room extends EventEmitter {
     this.phase = PHASES.QUESTION_OPEN;
     this.standings.visible = false;
     this.showMain = false;
+    // 문제 음원은 자동으로 틀지 않는다 — 진행자가 재생 버튼으로 튼다
+    this.audio = { target: null, playing: false, seq: this.audio.seq + 1 };
     this._armTimers();
     this._changed();
     return ok();
@@ -364,7 +370,36 @@ export class Room extends EventEmitter {
     if (this.phase === PHASES.QUESTION_OPEN) this._close({ silent: true });
     if (this.phase !== PHASES.QUESTION_CLOSED) return invalid('공개할 문제가 없습니다.');
     this.phase = PHASES.QUESTION_REVEAL;
+    // 정답 음원이 있으면 공개와 함께 자동 재생
+    if (this.question.answerAudio) this.audio = { target: 'answer', playing: true, seq: this.audio.seq + 1 };
     this._changed();
+    return ok();
+  }
+
+  _audioSource(target) {
+    const q = this.question;
+    if (!q) return null;
+    if (target === 'answer') return this.phase === PHASES.QUESTION_REVEAL ? q.answerAudio || null : null;
+    return q.audioUrl || null;
+  }
+
+  // 음원 재생·정지는 진행 단계를 바꾸지 않는다 (step 그대로 — 다른 기기의 진행 명령이 막히지 않게)
+  _playAudio(target = 'question') {
+    const inQuestion = [PHASES.QUESTION_OPEN, PHASES.QUESTION_CLOSED, PHASES.QUESTION_REVEAL].includes(this.phase);
+    if (!inQuestion) return invalid('재생할 음원이 없습니다.');
+    if (target !== 'question' && target !== 'answer') return fail(ERRORS.BAD_REQUEST, '알 수 없는 음원입니다.');
+    if (!this._audioSource(target)) {
+      return invalid(target === 'answer' ? '정답 공개 후에 재생할 수 있는 정답 음원이 없습니다.' : '이 문제에는 음원이 없습니다.');
+    }
+    this.audio = { target, playing: true, seq: this.audio.seq + 1 };
+    this.emit('state');
+    return ok();
+  }
+
+  _stopAudio() {
+    if (!this.audio.playing) return ok();
+    this.audio = { ...this.audio, playing: false, seq: this.audio.seq + 1 };
+    this.emit('state');
     return ok();
   }
 
@@ -684,6 +719,9 @@ export class Room extends EventEmitter {
   }
 
   _changed() {
+    // 문제 화면을 벗어나면 음원도 멈춘다
+    const inQuestion = [PHASES.QUESTION_OPEN, PHASES.QUESTION_CLOSED, PHASES.QUESTION_REVEAL].includes(this.phase);
+    if (!inQuestion && this.audio.playing) this.audio = { ...this.audio, playing: false, seq: this.audio.seq + 1 };
     this.step += 1;
     this.emit('state');
   }
@@ -714,6 +752,7 @@ export class Room extends EventEmitter {
       standings: this.standings,
       awards: this.awards,
       showMain: this.showMain,
+      audio: this.audio,
       settings: this.settings,
       finishedAt: this.finishedAt,
     };
@@ -732,6 +771,7 @@ export class Room extends EventEmitter {
     room.standings = state.standings || room.standings;
     room.awards = state.awards || null;
     room.showMain = !!state.showMain;
+    if (state.audio) room.audio = { ...state.audio, playing: false }; // 재시작 후 자동으로 다시 틀지 않는다
     room.settings = { ...DEFAULT_DISPLAY_SETTINGS, ...state.settings };
     room.finishedAt = state.finishedAt || null;
     const c = state.current;
