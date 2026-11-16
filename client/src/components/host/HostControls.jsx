@@ -128,6 +128,35 @@ export default function HostControls({ compact = false }) {
         {action ? NEXT_LABEL[action] : finished ? '시상 완료' : '대기'}
       </button>
 
+      {/* 음원 — Display 에서 재생 */}
+      {question && (question.hasAudio || question.answerAudio) && (() => {
+        const playing = state.audio?.playing;
+        const target = state.audio?.target;
+        return (
+          <div className="rounded-xl border border-indigo-800 bg-indigo-950/40 p-3 space-y-2">
+            <p className="text-sm font-bold text-indigo-200">
+              🎵 {playing ? (target === 'answer' ? '정답 음원 재생 중' : '문제 음원 재생 중') : '음원 정지됨'}
+              <span className="text-indigo-300/70 font-normal"> · 프로젝터 스피커로 나옵니다</span>
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {question.hasAudio && (
+                <button className={`${sub} !bg-indigo-700 col-span-2`} disabled={busy}
+                  onClick={() => send(C.AUDIO_PLAY, { target: 'question' })}>
+                  {playing && target === 'question' ? '↺ 처음부터 다시' : '🔊 음원 재생'}
+                </button>
+              )}
+              {question.answerAudio && (
+                <button className={`${sub} !bg-fuchsia-800 ${question.hasAudio ? '' : 'col-span-2'}`} disabled={busy}
+                  onClick={() => send(C.AUDIO_PLAY, { target: 'answer' })}>
+                  🔊 정답 음원
+                </button>
+              )}
+              <button className={sub} disabled={!playing || busy} onClick={() => send(C.AUDIO_STOP)}>⏹ 정지</button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 다음 순서 */}
       {next && (next.content || next.theme || next.title) && (
         <div className="rounded-xl bg-slate-900/70 border border-slate-800 px-4 py-2 text-sm">

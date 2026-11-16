@@ -42,7 +42,7 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
   const num = (v) => (v === '' ? undefined : Number(v));
   const errFor = (name) => errors.filter((e) => e.field === name || e.field.startsWith(`${name}[`) || e.field.startsWith(`${name}.`));
   const ErrorText = ({ name }) => errFor(name).map((e, i) => <p key={i} className="text-xs text-red-400 mt-1">{e.message}</p>);
-  const [extra, setExtra] = useState(Boolean(q.answerImage || q.answerNote || q.points !== undefined || q.penalty !== undefined));
+  const [extra, setExtra] = useState(Boolean(q.answerImage || q.answerAudio || q.answerNote || q.points !== undefined || q.penalty !== undefined));
 
   return (
     <div className={`rounded-xl border p-3 space-y-3 ${errors.length ? 'border-red-700 bg-red-950/20' : 'border-slate-800 bg-slate-950'}`}>
@@ -196,6 +196,11 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
               <div className="md:col-span-2">
                 <MediaField title="정답 공개 때 보여줄 사진 (선택)" value={q.answerImage} files={files} onChange={(v) => set({ answerImage: v })} />
                 <ErrorText name="answerImage" />
+              </div>
+              <div className="md:col-span-2">
+                <MediaField title="정답 공개 때 프로젝터에서 자동 재생할 음원 (선택 · 문제 음원과 달라도 됨)" kind="audio" value={q.answerAudio} files={files}
+                  onChange={(v) => set({ answerAudio: v })} placeholder="파일명(media 폴더) 또는 https:// 주소 (mp3 등)" />
+                <ErrorText name="answerAudio" />
               </div>
               <label className="md:col-span-2"><span className={label}>정답 아래 한 줄 설명 (선택)</span>
                 <input className={box} maxLength={200} value={q.answerNote || ''} onChange={(e) => set({ answerNote: e.target.value })} /></label>

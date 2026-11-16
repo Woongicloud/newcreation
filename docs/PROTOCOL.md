@@ -56,6 +56,7 @@ lobby → round_intro → question_open → question_closed → question_reveal
 | `award_next` | 다음 시상 항목 열기 (추첨은 이때 서버가 뽑는다) |
 | `award_step` | 현재 항목을 한 단계 공개 |
 | `show_main` / `hide_main` | Display를 메인 화면으로 / 원래 화면으로 |
+| `audio_play { target }` / `audio_stop` | Display에서 음원 재생(처음부터) / 정지. `target`: `question`(문제 음원) / `answer`(정답 음원, 공개 후). 진행 단계(`step`)는 바뀌지 않는다 |
 
 상태의 `next.action`이 `next`가 지금 할 일을 알려준다: `start_game` `open_question` `reveal` `next_question` `end_round` `next_round` `finish` `award_next` `award_step` 또는 `null`.
 
@@ -87,7 +88,9 @@ lobby → round_intro → question_open → question_closed → question_reveal
   "reaction": null,                 // 반응속도: { "signaled": false } → 신호 시점에 true
   "stats": null,                    // question_reveal: { answered, correct, choiceCounts?, reaction?, falseStarts? }
   "standings": null,                // 송출 중: { visible, scope, entries: [{ rank, group, unit, name, score }] } — 상위 10명
-  "award": null                     // awards: { index, total, type, title, reveal, step, steps, revealed, pool? }
+  "award": null,                    // awards: { index, total, type, title, reveal, step, steps, revealed, pool? }
+  "audio": null                     // 문제 중: { target: 'question'|'answer'|null, playing, seq } — Display 는 seq 가 바뀔 때마다 처음부터 재생
+                                    // 음원 주소(audioUrl·answerAudio)는 참가자에게 보내지 않는다. answerAudio 는 공개 때만
 }
 ```
 

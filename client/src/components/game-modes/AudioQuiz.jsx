@@ -1,15 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
+// 오디오 퀴즈 — 음악은 프로젝터(Display)에서만 나온다. 폰에는 입력칸만.
 export default function AudioQuiz({ question, onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   const [text, setText] = useState('');
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef();
-
-  function handlePlay() {
-    if (!audioRef.current) return;
-    audioRef.current.play().catch(() => {});
-    setPlaying(true);
-  }
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -19,20 +12,10 @@ export default function AudioQuiz({ question, onSubmit, hasSubmitted, correctAns
 
   return (
     <form onSubmit={handleSubmit} className="w-full px-2 space-y-4">
-      {question.audioUrl && (
-        <>
-          <audio ref={audioRef} src={question.audioUrl} preload="auto" className="hidden" />
-          <button
-            type="button"
-            onClick={handlePlay}
-            disabled={hasSubmitted}
-            className="w-full py-6 rounded-2xl bg-indigo-700 hover:bg-indigo-600 text-white text-2xl font-bold
-                       active:scale-95 transition-transform touch-target disabled:opacity-60"
-          >
-            {playing ? '🔊 재생 중...' : '▶ 음악 재생'}
-          </button>
-        </>
-      )}
+      <div className="w-full py-5 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-center">
+        <p className="text-3xl">🎧</p>
+        <p className="font-bold mt-1">화면에서 나오는 음악을 잘 들어보세요</p>
+      </div>
 
       <input
         type="text"

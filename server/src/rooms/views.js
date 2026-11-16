@@ -14,7 +14,7 @@ export function buildContext(room) {
   return { ranked, rankById: new Map(ranked.map((e) => [e.playerId, e.rank])) };
 }
 
-function questionView(room, { withAnswer }) {
+function questionView(room, { withAnswer, forPlayer = false }) {
   const round = room.round;
   const q = room.question;
   if (!q || room.phase === PHASES.ROUND_INTRO || room.phase === PHASES.ROUND_END) return null;
@@ -25,7 +25,9 @@ function questionView(room, { withAnswer }) {
     content: q.content,
     choices: q.choices,
     imageUrls: q.imageUrls,
-    audioUrl: q.audioUrl,
+    // 음원은 Display 에서만 재생한다 — 참가자 폰에는 주소를 보내지 않는다
+    audioUrl: forPlayer ? undefined : q.audioUrl,
+    hasAudio: !!q.audioUrl || undefined,
     consonantHint: q.consonantHint,
     timeLimit: q.timeLimit,
     points: q.points,
@@ -39,6 +41,7 @@ function questionView(room, { withAnswer }) {
   if (room.phase === PHASES.QUESTION_REVEAL) {
     if (q.answerImage) view.answerImage = q.answerImage;
     if (q.answerNote) view.answerNote = q.answerNote;
+    if (q.answerAudio && !forPlayer) view.answerAudio = q.answerAudio;
   }
   return view;
 }
@@ -114,7 +117,8 @@ function baseView(room, role) {
       theme: round.theme,
       gameMode: round.gameMode,
     } : null,
-    question: inQuestion ? questionView(room, { withAnswer: staff || revealed }) : null,
+    question: inQuestion ? questionView(room, { withAnswer: staff || revealed, forPlayer: role === ROLES.PLAYER }) : null,
+    audio: inQuestion ? room.audio : null,
     timer: inQuestion && c ? {
       deadlineAt: c.pausedRemainingMs === null ? c.deadlineAt : null,
       paused: c.pausedRemainingMs !== null,

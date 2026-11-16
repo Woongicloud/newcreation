@@ -40,6 +40,8 @@ export const COMMANDS = {
   AWARD_STEP: 'award_step',         // 현재 항목을 한 단계 공개
   SHOW_MAIN: 'show_main',           // Display 를 메인 화면으로
   HIDE_MAIN: 'hide_main',
+  AUDIO_PLAY: 'audio_play',         // { target: 'question' | 'answer' } Display 에서 음원 재생 (처음부터)
+  AUDIO_STOP: 'audio_stop',
 };
 
 export const EVENTS = {

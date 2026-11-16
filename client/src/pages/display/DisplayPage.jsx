@@ -178,21 +178,11 @@ function RevealCard({ question, stats }) {
 
 function QuestionScreen({ state }) {
   const { question, phase, position, stats, reaction } = state;
-  const audioRef = useRef(null);
   const mode = question.gameMode;
   const open = phase === PHASES.QUESTION_OPEN;
   const revealed = phase === PHASES.QUESTION_REVEAL;
   const online = Math.max(1, state.onlineCount);
   const pct = Math.min(100, Math.round((state.submittedCount / online) * 100));
-
-  // 오디오 퀴즈: 문제가 열려 있는 동안 재생
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !question.audioUrl) return undefined;
-    if (open) el.play().catch(() => {});
-    else el.pause();
-    return () => el.pause();
-  }, [question.id, open]);
 
   // 반응속도는 신호 화면이 전부다
   if (mode === GAME_MODES.REACTION && !revealed) {
@@ -212,7 +202,6 @@ function QuestionScreen({ state }) {
 
   return (
     <Screen id={`q-${question.id}`} className="">
-      {question.audioUrl && <audio ref={audioRef} src={question.audioUrl} className="hidden" />}
       <div className="flex-1 flex flex-col px-[4vw] py-[3vw] gap-[1.6vw] min-w-0">
         <div className="flex items-center gap-[1.2vw]">
           <span className="px-[1.4vw] py-[0.4vw] rounded-full font-bold" style={{ fontSize: '1.4vw', background: 'var(--d-frame)', color: '#0b1220' }}>
@@ -266,7 +255,17 @@ function QuestionScreen({ state }) {
           </div>
         )}
 
-        {question.audioUrl && <p className="text-center" style={{ fontSize: '6vw' }}>{open ? '🔊' : '🔈'}</p>}
+        {question.audioUrl && (
+          <div className="flex flex-col items-center gap-[0.6vw]">
+            <motion.p animate={state.audio?.playing && state.audio.target === 'question' ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+              transition={{ repeat: Infinity, duration: 1 }} style={{ fontSize: '6vw' }}>
+              {state.audio?.playing && state.audio.target === 'question' ? '🔊' : '🔈'}
+            </motion.p>
+            <p style={{ fontSize: '1.6vw', color: 'var(--d-muted)' }}>
+              {state.audio?.playing && state.audio.target === 'question' ? '잘 들어보세요!' : '곧 음악이 나옵니다'}
+            </p>
+          </div>
+        )}
 
         {mode === GAME_MODES.EMOJI_FIND && (
           <p className="text-center" style={{ fontSize: '2.2vw', color: 'var(--d-muted)' }}>
@@ -356,6 +355,43 @@ function Stage({ state }) {
   return <Center id="final" emoji="🏁" title="게임 종료!" subtitle="곧 시상이 시작됩니다" />;
 }
 
+// Display 의 음원 재생기. 서버의 audio 상태(seq)가 바뀔 때마다 따라간다.
+// 브라우저가 자동 재생을 막으면(화면을 한 번도 누르지 않은 경우) "소리 켜기" 버튼을 띄운다.
+function DisplayAudio({ state, muted }) {
+  const ref = useRef(null);
+  const [blocked, setBlocked] = useState(false);
+  const audio = state.audio;
+  const q = state.question;
+  const src = audio?.playing ? (audio.target === 'answer' ? q?.answerAudio : q?.audioUrl) : null;
+
+  const play = () => {
+    const el = ref.current;
+    if (!el || !src) return;
+    el.play().then(() => setBlocked(false)).catch((e) => { if (e?.name === 'NotAllowedError') setBlocked(true); });
+  };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!src || muted) { el.pause(); return; }
+    if (el.getAttribute('src') !== src) el.setAttribute('src', src);
+    el.currentTime = 0;
+    play();
+  }, [audio?.seq, src, muted]);
+
+  return (
+    <>
+      <audio ref={ref} preload="auto" className="hidden" />
+      {blocked && src && !muted && (
+        <button onClick={play} className="absolute z-[60] left-1/2 -translate-x-1/2 bottom-[2vw] px-[2vw] py-[1vw] rounded-full font-bold shadow-xl"
+          style={{ fontSize: '1.6vw', background: 'var(--d-accent)', color: 'var(--d-on-accent)' }}>
+          🔊 브라우저가 소리를 막았습니다 — 여기를 눌러 재생
+        </button>
+      )}
+    </>
+  );
+}
+
 // 화면이 바뀔 때만 전환 애니메이션이 돌도록 화면 단위 키를 만든다
 function stageKey(state) {
   if (state.showMain) return 'main';
@@ -413,6 +449,7 @@ export default function DisplayPage() {
     <div className="w-screen h-screen p-[0.45vw] select-none" style={{ ...theme.vars, background: 'var(--d-frame)', color: 'var(--d-fg)' }}>
       <div className="relative w-full h-full overflow-hidden rounded-[1.2vw]" style={{ background: 'var(--d-bg)' }}>
         <Background background={state.settings.background} />
+        <DisplayAudio state={state} muted={preview} />
         <ChatOverlay />
         {!preview && (
           <button

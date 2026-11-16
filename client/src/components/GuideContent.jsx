@@ -53,7 +53,7 @@ export const MODES = [
     color: 'from-indigo-100 to-indigo-50 border-indigo-200',
     desc: '흘러나오는 음악을 듣고 곡명이나 정답을 입력하세요.',
     tip: '음악은 프로젝터에서 재생됩니다. 잘 들어보세요!',
-    how: '휴대폰에서 ▶ 버튼으로도 들을 수 있습니다.',
+    how: '음악은 큰 화면 스피커로만 나옵니다. 듣고 정답을 입력하세요.',
   },
   {
     icon: '⚡',
