@@ -134,8 +134,13 @@ HTTP
 |---|---|
 | `POST /api/admin/login { password }` | 관리자 토큰. 5분에 10회 제한 |
 | `GET /api/rooms/:code/public` | 등록 화면용 — `{ ready, finished, sessionName, teams }` |
-| `POST /api/media/upload-url { filename, kind }` | (관리자) 스토리지 서명 업로드 URL |
-| `GET /api/media?kind=` | (관리자) 올려둔 파일 목록 |
+| `POST /api/media/upload-url { filename, kind }` | (관리자) 스토리지 서명 업로드 URL. `kind`: `question` / `background`. 저장 경로는 `폴더/임의이름.확장자` |
+| `POST /api/media/complete { path, name, size }` | (관리자) 올리기를 마친 파일의 원래 이름 기록 |
+| `GET /api/media?kind=` | (관리자) 파일 목록 `{ files: [{ path, name, folder, type, size, createdAt, publicUrl }], catalog }`. `kind`: `question` / `background` / `all`. `type`: image·audio·video |
+| `PATCH /api/media { path, name }` | (관리자) 이름 변경 — 파일 주소는 그대로 |
+| `DELETE /api/media { path }` | (관리자) 파일 삭제 |
+
+파일 이름은 `media_files` 테이블에 둔다 (Storage 경로에는 한글을 못 쓰므로). 테이블이 없으면 `catalog: false` — 올리기·목록·삭제는 되고 이름 변경만 안 된다.
 
 ## 점수 규칙 (`shared/scoring.js`)
 

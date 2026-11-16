@@ -1,11 +1,10 @@
 // HTTP API — 로그인, 방 공개 정보(등록 화면용), 미디어 업로드.
 import express from 'express';
 import cors from 'cors';
-import { randomUUID } from 'node:crypto';
 import { ROLES } from '../../shared/protocol.js';
 import { checkAdminPassword, createRateLimiter, signToken, verifyToken } from './auth.js';
+import { createMediaService, MediaError } from './media.js';
 
-const MEDIA_EXT = /\.(png|jpe?g|gif|webp|svg|mp4|webm|mp3|wav|ogg|m4a)$/i;
 
 export function createApp({ registry, allowedOrigins }) {
   const app = express();
@@ -54,33 +53,27 @@ export function createApp({ registry, allowedOrigins }) {
     });
   });
 
-  // 미디어: 서버는 서명 URL 만 발급하고, 파일은 관리자 브라우저가 스토리지로 직접 올린다
-  app.post('/api/media/upload-url', requireAdmin, async (req, res) => {
-    const media = registry.persistence.media;
+  // 레크레이션용 파일: 서버는 서명 URL 발급·목록·이름·삭제만 하고, 파일은 관리자 브라우저가 스토리지로 직접 올린다
+  const media = createMediaService(registry.persistence.media);
+  const mediaRoute = (handler) => async (req, res) => {
     if (!media) return res.status(503).json({ ok: false, message: '스토리지가 설정되지 않았습니다.' });
-    const filename = String(req.body?.filename || '');
-    const ext = filename.match(MEDIA_EXT)?.[0].toLowerCase();
-    if (!ext) return res.status(400).json({ ok: false, message: '지원하지 않는 파일 형식입니다.' });
-    const folder = req.body?.kind === 'background' ? 'backgrounds' : 'questions';
     try {
-      res.json({ ok: true, ...(await media.createUploadUrl(`${folder}/${randomUUID()}${ext}`)) });
+      res.json({ ok: true, ...(await handler(req)) });
     } catch (e) {
+      if (e instanceof MediaError) return res.status(e.status).json({ ok: false, message: e.message });
       console.error(e.message);
-      res.status(502).json({ ok: false, message: '업로드 주소를 만들지 못했습니다.' });
+      res.status(502).json({ ok: false, message: '파일 저장소 요청에 실패했습니다.' });
     }
-  });
+  };
 
-  app.get('/api/media', requireAdmin, async (req, res) => {
-    const media = registry.persistence.media;
-    if (!media) return res.status(503).json({ ok: false, message: '스토리지가 설정되지 않았습니다.' });
-    const folder = req.query.kind === 'background' ? 'backgrounds' : 'questions';
-    try {
-      res.json({ ok: true, files: await media.list(folder) });
-    } catch (e) {
-      console.error(e.message);
-      res.status(502).json({ ok: false, message: '파일 목록을 불러오지 못했습니다.' });
-    }
-  });
+  app.get('/api/media', requireAdmin, mediaRoute(async (req) => ({
+    files: await media.list(['question', 'background', 'all'].includes(req.query.kind) ? req.query.kind : 'question'),
+    catalog: media.catalogReady,
+  })));
+  app.post('/api/media/upload-url', requireAdmin, mediaRoute((req) => media.prepareUpload(req.body?.filename, req.body?.kind)));
+  app.post('/api/media/complete', requireAdmin, mediaRoute((req) => media.complete(req.body?.path, req.body?.name, req.body?.size)));
+  app.patch('/api/media', requireAdmin, mediaRoute((req) => media.rename(req.body?.path, req.body?.name)));
+  app.delete('/api/media', requireAdmin, mediaRoute((req) => media.remove(req.body?.path)));
 
   return app;
 }

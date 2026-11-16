@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, request, EVENTS } from '../../lib/connection.js';
 import { THEMES } from '../../lib/themes.js';
+import { uploadFile } from '../../lib/upload.js';
 import { Panel, btn, btnPrimary, input } from './ui.jsx';
 
 // 놓을 때 반영하는 슬라이더 — 끄는 동안 매번 전체 화면에 상태를 뿌리지 않게 한다
@@ -55,13 +56,11 @@ export default function SettingsTab({ state, token, flash }) {
     e.target.value = '';
     if (!file) return;
     setUploading(true);
-    const ticket = await api('/api/media/upload-url', { method: 'POST', token, body: { filename: file.name, kind: 'background' } });
-    if (!ticket.ok) { setUploading(false); return flash(ticket.message || '업로드하지 못했습니다.'); }
-    // 파일은 서버를 거치지 않고 스토리지로 직접 올린다
-    const put = await fetch(ticket.signedUrl, { method: 'PUT', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }).catch(() => null);
+    // 파일은 서버를 거치지 않고 스토리지로 직접 올린다 (이름은 ⑥ 파일 탭에서 관리)
+    const res = await uploadFile(token, file, 'background');
     setUploading(false);
-    if (!put?.ok) return flash('스토리지에 올리지 못했습니다.');
-    await patch({ background: { type: file.type.startsWith('video/') ? 'video' : 'image', value: ticket.publicUrl } });
+    if (!res.ok) return flash(res.message || '업로드하지 못했습니다.');
+    await patch({ background: { type: file.type.startsWith('video/') ? 'video' : 'image', value: res.publicUrl } });
     loadFiles();
   }
 
@@ -120,9 +119,9 @@ export default function SettingsTab({ state, token, flash }) {
               {files?.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
                   {files.map((f) => (
-                    <button key={f.path} onClick={() => patch({ background: { type: isVideo(f.name) ? 'video' : 'image', value: f.publicUrl } })}
+                    <button key={f.path} title={f.name} onClick={() => patch({ background: { type: f.type === 'video' ? 'video' : 'image', value: f.publicUrl } })}
                       className={`h-16 rounded-lg border-2 overflow-hidden bg-slate-950 ${bg?.value === f.publicUrl ? 'border-sky-400' : 'border-slate-700'}`}>
-                      {isVideo(f.name) ? <span className="text-xs">🎞 영상</span> : <img src={f.publicUrl} alt="" className="w-full h-full object-cover" />}
+                      {f.type === 'video' ? <span className="text-xs">🎞 {f.name}</span> : <img src={f.publicUrl} alt="" className="w-full h-full object-cover" />}
                     </button>
                   ))}
                 </div>

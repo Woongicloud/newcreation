@@ -6,7 +6,6 @@ import { appUrl } from '../../lib/session.js';
 import { PHASE_LABEL, AWARD_TYPE_LABEL } from '../../lib/labels.js';
 import { ALL_PRACTICE } from '../../data/practice/index.js';
 import { Panel, btn, btnPrimary } from './ui.jsx';
-import QuestionMedia from './QuestionMedia.jsx';
 
 function CopyLink({ label, url }) {
   const [copied, setCopied] = useState(false);
@@ -147,7 +146,9 @@ export default function PrepareTab({ state, token, rooms, refreshRooms, createRo
         </Panel>
       )}
 
-      <QuestionMedia token={token} flash={flash} />
+      <Panel title="문제·정답용 사진·음원" className="lg:col-span-2">
+        <p className="text-sm text-slate-400">사진·음원 올리기, 이름 변경, 삭제는 <button className="underline text-sky-300" onClick={() => setTab('media')}>⑥ 파일</button> 탭에서 합니다.</p>
+      </Panel>
     </div>
   );
 }
