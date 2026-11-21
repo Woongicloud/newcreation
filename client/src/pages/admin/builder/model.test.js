@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { validateQuizSet } from '@shared/quizSchema.js';
 import { GAME_MODES as M } from '@shared/protocol.js';
 import { readFileSync } from 'node:fs';
-import { MODE_OPTIONS, newSet, newRound, newQuestion, convertQuestion, cleanSet, chosung, groupErrors, CHOICE_MODES, HAS_ANSWER, normalizeImport, pathLabel } from './model.js';
+import { MODE_OPTIONS, MODE_FIELDS, newSet, newRound, newQuestion, convertQuestion, cleanSet, chosung, groupErrors, CHOICE_MODES, HAS_ANSWER, normalizeImport, pathLabel } from './model.js';
 
 // 화면에서 필수 칸을 채운 것처럼
 function fill(q, mode) {
@@ -93,5 +93,31 @@ describe('문제 만들기 — 다른 인정 답', () => {
     const q = { content: 'Q', correctAnswer: '서울', acceptAnswers: ['서울특별시'] };
     expect(convertQuestion(q, M.CONSONANT).acceptAnswers).toEqual(['서울특별시']);
     expect(convertQuestion(q, M.MULTIPLE_CHOICE).acceptAnswers).toBeUndefined();
+  });
+});
+
+describe('문제 만들기 — 객관식 문제 사진', () => {
+  it('객관식에 사진 칸이 있고, 비워 두면 내보낼 때 빠진다', () => {
+    expect(MODE_FIELDS[M.MULTIPLE_CHOICE]).toContain('imageUrl');
+    const base = { content: 'Q', choices: ['가', '나'], correctAnswer: '가', timeLimit: 10 };
+    const empty = cleanSet({ rounds: [{ theme: 'R', gameMode: M.MULTIPLE_CHOICE, questions: [{ ...base, imageUrl: '' }] }] });
+    expect(empty.rounds[0].questions[0].imageUrl).toBeUndefined();
+  });
+
+  it('사진을 넣으면 서버 검사를 통과하고 프로젝터·폰용 imageUrls 로 나간다', () => {
+    const set = newSet();
+    set.rounds = [{ theme: 'R', gameMode: M.MULTIPLE_CHOICE, questions: [{ content: '이 장소는?', imageUrl: 'place.jpg', choices: ['가', '나'], correctAnswer: '가', timeLimit: 10 }] }];
+    const { ok, set: checked, warnings } = validateQuizSet(cleanSet(set));
+    expect(ok).toBe(true);
+    expect(checked.rounds[0].questions[0].imageUrls).toEqual(['/media/place.jpg']);
+    expect(warnings || []).toEqual([]);
+  });
+
+  it('모드를 바꿔도 문제 사진이 따라간다', () => {
+    const q = { content: 'Q', imageUrl: 'a.png', choices: ['가', '나'], correctAnswer: '가' };
+    expect(convertQuestion(q, M.MULTIPLE_CHOICE).imageUrl).toBe('a.png');
+    expect(convertQuestion({ ...q, imageUrl: undefined, imageUrls: ['b.png', 'c.png'] }, M.MULTIPLE_CHOICE).imageUrl).toBe('b.png');
+    expect(convertQuestion(q, M.IMAGE_MEMORY).imageUrls).toEqual(['a.png']);
+    expect(convertQuestion(q, M.SHORT_ANSWER).imageUrl).toBeUndefined();
   });
 });
