@@ -3,6 +3,7 @@ import { GAME_MODES as M, HINT_DELAY_DEFAULT } from '@shared/protocol.js';
 import { CHOICE_LABELS } from '../../../lib/choiceColors.js';
 import { MODE_FIELDS, HAS_ANSWER, CHOICE_MODES, chosung } from './model.js';
 import { btn, input } from '../ui.jsx';
+import { diagnoseMedia, isPageLink, PAGE_LINK_MESSAGE } from '../../../lib/mediaCheck.js';
 
 const label = 'block text-xs text-slate-400 mb-1';
 const box = `${input} w-full`;
@@ -19,8 +20,14 @@ export function MediaField({ title, value, onChange, files, kind = 'image', plac
   const picked = url && (files || []).find((f) => f.publicUrl === url || f.name.normalize('NFC').toLowerCase() === lower
     || f.path.split('/').pop().toLowerCase() === lower);
   const preview = picked ? picked.publicUrl : url && (url.startsWith('http') || url.startsWith('/')) ? url : url ? `/media/${url}` : null;
-  const [broken, setBroken] = useState(false);
-  useEffect(() => setBroken(false), [preview]);
+  // 미리보기가 안 되면 원인을 찾아 알려준다 (웹페이지 링크는 불러보기 전에 바로)
+  const pageLink = isPageLink(preview);
+  const [problem, setProblem] = useState(null); // null | '확인 중' | 안내 문구
+  useEffect(() => setProblem(null), [preview]);
+  const onBroken = (mediaError) => {
+    setProblem('🔎 파일을 불러오지 못해 원인을 확인하는 중…');
+    diagnoseMedia(preview, { kind, mediaError }).then((msg) => setProblem(msg || '⚠️ 이 주소의 파일을 불러오지 못했습니다.'));
+  };
   return (
     <div>
       <span className={label}>{title}</span>
@@ -51,9 +58,11 @@ export function MediaField({ title, value, onChange, files, kind = 'image', plac
         </div>
       )}
       {picked && <p className="text-xs text-slate-400 mt-1">📎 올린 파일: {picked.name}</p>}
-      {broken && <p className="text-xs text-red-400 mt-1">⚠️ 이 주소의 파일을 불러오지 못했습니다. ⑥ 파일에 올린 파일을 고르거나 이름을 확인하세요.</p>}
-      {preview && kind === 'image' && <img src={preview} alt="" onError={() => setBroken(true)} className="mt-2 h-20 rounded border border-slate-700 object-contain bg-slate-950" />}
-      {preview && kind === 'audio' && <audio src={preview} controls preload="metadata" onError={() => setBroken(true)} className="mt-2 h-8 w-full" />}
+      {(pageLink || problem) && <p className="text-xs text-amber-300 mt-1 leading-relaxed">{pageLink ? PAGE_LINK_MESSAGE : problem}</p>}
+      {preview && !pageLink && kind === 'image' && <img src={preview} alt="" onError={() => onBroken(null)} className="mt-2 h-20 rounded border border-slate-700 object-contain bg-slate-950" />}
+      {preview && !pageLink && kind === 'audio' && (
+        <audio key={preview} src={preview} controls preload="metadata" onError={(e) => onBroken(e.currentTarget.error?.code ?? null)} className="mt-2 h-8 w-full" />
+      )}
     </div>
   );
 }

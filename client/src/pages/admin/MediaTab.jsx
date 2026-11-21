@@ -146,6 +146,7 @@ export default function MediaTab({ token, flash }) {
         <p className="text-sm text-slate-400">
           사진(png·jpg·gif·webp·svg), 음원(mp3·wav·m4a·ogg·aac), 영상(mp4·webm)을 올릴 수 있습니다. 여러 개를 한 번에 골라도 됩니다.
           <b className="text-slate-300"> mp4 영상도 음원으로 쓸 수 있습니다</b>(소리만 재생). 큰 사진(1.5MB 이상)은 올릴 때 자동으로 줄여 빨리 뜨게 합니다.
+          사운드클라우드·유튜브 같은 <b className="text-slate-300">링크는 쓸 수 없으니</b> 파일을 내려받아 여기에 올려 주세요.
           올린 뒤 "주소 복사"로 받은 주소를 문제 세트의 <code>imageUrl</code>·<code>audioUrl</code>·<code>answerImage</code>·<code>answerAudio</code>에 넣거나,
           ⑤ 문제 만들기에서 "올린 파일"로 고르세요. 문제 세트에 <b className="text-slate-300">여기 보이는 파일 이름만 적어도</b> 방에 적용할 때 자동으로 연결됩니다.
         </p>
