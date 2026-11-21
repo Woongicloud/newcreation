@@ -76,6 +76,9 @@ export function createApp({ registry, allowedOrigins }) {
     }
   });
 
+  app.get('/api/media/status', requireAdmin, mediaRoute(() => media.status()));
+  app.post('/api/media/make-public', requireAdmin, mediaRoute(() => media.makePublic()));
+
   app.get('/api/media', requireAdmin, mediaRoute(async (req) => ({
     files: await media.list(['question', 'background', 'all'].includes(req.query.kind) ? req.query.kind : 'question'),
     catalog: media.catalogReady,
