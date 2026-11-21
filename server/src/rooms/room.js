@@ -316,8 +316,8 @@ export class Room extends EventEmitter {
       const delay = 1000 + this._rng() * (maxDelay - 1000);
       this.current.reaction = { signalAt: now + delay, signaled: false, results: [] };
     }
-    // 초성 힌트: 문제가 나오고 hintDelay 초 뒤에 공개 (진행자·관리자는 처음부터 본다)
-    if (round.gameMode === GAME_MODES.CONSONANT && question.consonantHint) {
+    // 초성 추가 힌트: 문제가 나오고 hintDelay 초 뒤에 공개 (초성 힌트는 바로, 진행자·관리자는 추가 힌트도 처음부터 본다)
+    if (round.gameMode === GAME_MODES.CONSONANT && question.extraHint) {
       const delay = Math.max(0, (question.hintDelay ?? HINT_DELAY_DEFAULT) * 1000);
       this.current.hint = { showAt: now + delay, shown: delay === 0 };
     }

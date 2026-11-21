@@ -439,42 +439,52 @@ describe('음원 — Display 에서만, 진행자가 재생', () => {
   });
 });
 
-describe('초성 힌트 지연 공개', () => {
+describe('초성 추가 힌트 지연 공개', () => {
   const consonant = (extra = {}) => makeSet({ rounds: [{ gameMode: 'consonant', questions: [
-    { content: '수도는?', correctAnswer: '서울', consonantHint: 'ㅅㅇ', timeLimit: 20, ...extra },
+    { content: '수도는?', correctAnswer: '서울', consonantHint: 'ㅅㅇ', extraHint: '대한민국', timeLimit: 20, ...extra },
   ] }] });
 
-  it('기본 5초 뒤에 Display·참가자에게 공개되고, 진행자는 처음부터 본다', () => {
+  it('초성 힌트는 바로, 추가 힌트는 기본 5초 뒤에 Display·참가자에게 공개 (진행자는 처음부터)', () => {
     const { room, ids } = makeRoom({ set: consonant() });
-    expect(room.set.rounds[0].questions[0].hintDelay).toBe(5);
+    expect(room.set.rounds[0].questions[0]).toMatchObject({ extraHint: '대한민국', hintDelay: 5 });
     cmd(room, C.NEXT); cmd(room, C.NEXT);
     const now = Date.now();
     for (const v of [viewFor(room, ROLES.DISPLAY), viewFor(room, ROLES.PLAYER, ids[0])]) {
-      expect(v.question.consonantHint).toBeUndefined();
+      expect(v.question.consonantHint).toBe('ㅅㅇ');
+      expect(v.question.extraHint).toBeUndefined();
       expect(v.question.hint).toEqual({ pending: true, at: now + 5_000, remainingMs: null });
     }
-    expect(viewFor(room, ROLES.HOST).question).toMatchObject({ consonantHint: 'ㅅㅇ', hint: { pending: true } });
+    expect(viewFor(room, ROLES.HOST).question).toMatchObject({ consonantHint: 'ㅅㅇ', extraHint: '대한민국', hint: { pending: true } });
     const emitted = vi.fn(); room.on('state', emitted);
     vi.advanceTimersByTime(4_999);
-    expect(viewFor(room, ROLES.DISPLAY).question.consonantHint).toBeUndefined();
+    expect(viewFor(room, ROLES.DISPLAY).question.extraHint).toBeUndefined();
     vi.advanceTimersByTime(1);
     expect(emitted).toHaveBeenCalled();
     const v = viewFor(room, ROLES.PLAYER, ids[0]).question;
+    expect(v.extraHint).toBe('대한민국');
+    expect(v.hint).toBeUndefined();
+  });
+
+  it('추가 힌트가 없으면 기다릴 것이 없다', () => {
+    const { room } = makeRoom({ set: consonant({ extraHint: undefined }) });
+    cmd(room, C.NEXT); cmd(room, C.NEXT);
+    const v = viewFor(room, ROLES.DISPLAY).question;
     expect(v.consonantHint).toBe('ㅅㅇ');
     expect(v.hint).toBeUndefined();
+    expect(room.current.hint).toBeUndefined();
   });
 
   it('초를 바꿀 수 있고, 0이면 바로 나온다', () => {
     let { room } = makeRoom({ set: consonant({ hintDelay: 12 }) });
     cmd(room, C.NEXT); cmd(room, C.NEXT);
     vi.advanceTimersByTime(11_000);
-    expect(viewFor(room, ROLES.DISPLAY).question.consonantHint).toBeUndefined();
+    expect(viewFor(room, ROLES.DISPLAY).question.extraHint).toBeUndefined();
     vi.advanceTimersByTime(1_000);
-    expect(viewFor(room, ROLES.DISPLAY).question.consonantHint).toBe('ㅅㅇ');
+    expect(viewFor(room, ROLES.DISPLAY).question.extraHint).toBe('대한민국');
 
     ({ room } = makeRoom({ set: consonant({ hintDelay: 0 }) }));
     cmd(room, C.NEXT); cmd(room, C.NEXT);
-    expect(viewFor(room, ROLES.DISPLAY).question).toMatchObject({ consonantHint: 'ㅅㅇ' });
+    expect(viewFor(room, ROLES.DISPLAY).question).toMatchObject({ extraHint: '대한민국' });
     expect(viewFor(room, ROLES.DISPLAY).question.hint).toBeUndefined();
   });
 
@@ -485,28 +495,30 @@ describe('초성 힌트 지연 공개', () => {
     cmd(room, C.PAUSE);
     expect(viewFor(room, ROLES.DISPLAY).question.hint).toEqual({ pending: true, at: null, remainingMs: 3_000 });
     vi.advanceTimersByTime(10_000);
-    expect(viewFor(room, ROLES.DISPLAY).question.consonantHint).toBeUndefined();
+    expect(viewFor(room, ROLES.DISPLAY).question.extraHint).toBeUndefined();
     cmd(room, C.RESUME);
     vi.advanceTimersByTime(2_999);
-    expect(viewFor(room, ROLES.DISPLAY).question.consonantHint).toBeUndefined();
+    expect(viewFor(room, ROLES.DISPLAY).question.extraHint).toBeUndefined();
     vi.advanceTimersByTime(1);
-    expect(viewFor(room, ROLES.DISPLAY).question.consonantHint).toBe('ㅅㅇ');
+    expect(viewFor(room, ROLES.DISPLAY).question.extraHint).toBe('대한민국');
 
     const late = makeRoom({ set: consonant({ hintDelay: 60 }) }).room;
     cmd(late, C.NEXT); cmd(late, C.NEXT);
     vi.advanceTimersByTime(20_000); // 제한 시간이 먼저 끝남
     expect(late.phase).toBe(PHASES.QUESTION_CLOSED);
-    expect(viewFor(late, ROLES.DISPLAY).question).toMatchObject({ consonantHint: 'ㅅㅇ' });
+    expect(viewFor(late, ROLES.DISPLAY).question).toMatchObject({ extraHint: '대한민국' });
     expect(viewFor(late, ROLES.DISPLAY).question.hint).toBeUndefined();
   });
 
-  it('제한 시간보다 길면 경고, 음수는 오류', async () => {
+  it('제한 시간보다 길면 경고, 음수는 오류, 추가 힌트가 없으면 경고 없음', async () => {
     const { validateQuizSet } = await import('../../shared/quizSchema.js');
-    const base = { content: 'Q', correctAnswer: '서울', consonantHint: 'ㅅㅇ', timeLimit: 10 };
+    const base = { content: 'Q', correctAnswer: '서울', consonantHint: 'ㅅㅇ', extraHint: '대한민국', timeLimit: 10 };
     const r1 = validateQuizSet({ rounds: [{ gameMode: 'consonant', questions: [{ ...base, hintDelay: 10 }] }] });
     expect(r1.ok).toBe(true);
     expect(r1.warnings.map((w) => w.path)).toContain('rounds[0].questions[0].hintDelay');
     const r2 = validateQuizSet({ rounds: [{ gameMode: 'consonant', questions: [{ ...base, hintDelay: -1 }] }] });
     expect(r2.errors.map((e) => e.path)).toContain('rounds[0].questions[0].hintDelay');
+    const r3 = validateQuizSet({ rounds: [{ gameMode: 'consonant', questions: [{ ...base, extraHint: undefined, hintDelay: 30 }] }] });
+    expect((r3.warnings || []).filter((w) => w.path.endsWith('hintDelay'))).toEqual([]);
   });
 });

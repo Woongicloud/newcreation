@@ -1,5 +1,5 @@
 // 게임 모드 이름. 프로토콜(상태·명령·이벤트)은 protocol.js 에 있다.
-// 초성 퀴즈: 문제가 나온 뒤 초성 힌트를 보여주기까지 기본 대기 시간(초)
+// 초성 퀴즈: 문제가 나온 뒤 추가 힌트(extraHint)를 보여주기까지 기본 대기 시간(초). 초성 힌트는 바로 나온다
 export const HINT_DELAY_DEFAULT = 5;
 
 export const GAME_MODES = {

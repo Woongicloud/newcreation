@@ -29,11 +29,12 @@ function questionView(room, { withAnswer, forPlayer = false, staff = false }) {
     audioUrl: forPlayer ? undefined : q.audioUrl,
     hasAudio: !!q.audioUrl || undefined,
     consonantHint: q.consonantHint,
+    extraHint: q.extraHint,
     timeLimit: q.timeLimit,
     points: q.points,
     penalty: q.penalty,
   };
-  // 초성 힌트는 공개 시각 전에는 Display·참가자에게 보내지 않는다 (진행자·관리자는 미리 본다).
+  // 초성 추가 힌트는 공개 시각 전에는 Display·참가자에게 보내지 않는다 (진행자·관리자는 미리 본다).
   // 대신 언제 나오는지(hint.at, 멈춤 중이면 remainingMs)를 보내 화면에서 카운트다운한다.
   const c = room.current;
   if (c?.hint && !c.hint.shown && room.phase === PHASES.QUESTION_OPEN) {
@@ -43,7 +44,7 @@ function questionView(room, { withAnswer, forPlayer = false, staff = false }) {
       at: paused ? null : c.hint.showAt,
       remainingMs: paused ? Math.max(0, c.hint.showAt - c.pausedAt) : null,
     };
-    if (!staff) delete view.consonantHint;
+    if (!staff) delete view.extraHint;
   }
   // 장문 타이핑은 원문을 보고 따라 치는 게임이라 원문을 항상 보낸다
   if (round.gameMode === GAME_MODES.LONG_TYPING) view.targetText = q.correctAnswer;
