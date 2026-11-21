@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PHASES, COMMANDS as C, ERRORS } from '@shared/protocol.js';
 import { useRoom, command } from '../../lib/connection.js';
-import { useCountdown } from '../../hooks/useCountdown.js';
+import { useCountdown, useHintCountdown } from '../../hooks/useCountdown.js';
 import { MODE_LABEL, PHASE_LABEL, NEXT_LABEL, memberLabel } from '../../lib/labels.js';
 
 // 진행 패널 — 진행자 폰(/host)과 관리자 PC 진행 탭이 같이 쓴다.
@@ -37,6 +37,7 @@ export default function HostControls({ compact = false }) {
   const state = useRoom((s) => s.state);
   const connected = useRoom((s) => s.connected);
   const countdown = useCountdown();
+  const hintIn = useHintCountdown(state.question?.hint);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
   const [confirm, setConfirm] = useState(null); // { label, run }
@@ -85,7 +86,12 @@ export default function HostControls({ compact = false }) {
         {question ? (
           <>
             <p className="text-lg font-bold leading-snug">{question.content}</p>
-            {question.consonantHint && <p className="text-amber-300 font-bold tracking-widest">{question.consonantHint}</p>}
+            {question.consonantHint && (
+              <p className="text-amber-300 font-bold tracking-widest">
+                {question.consonantHint}
+                {hintIn != null && <span className="ml-2 text-xs font-normal tracking-normal text-slate-400">화면 공개까지 {hintIn}초</span>}
+              </p>
+            )}
             {question.correctAnswer !== undefined && (
               <p className="text-emerald-300 font-bold">
                 정답: {question.correctAnswer}

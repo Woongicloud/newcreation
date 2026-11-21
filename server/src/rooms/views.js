@@ -14,7 +14,7 @@ export function buildContext(room) {
   return { ranked, rankById: new Map(ranked.map((e) => [e.playerId, e.rank])) };
 }
 
-function questionView(room, { withAnswer, forPlayer = false }) {
+function questionView(room, { withAnswer, forPlayer = false, staff = false }) {
   const round = room.round;
   const q = room.question;
   if (!q || room.phase === PHASES.ROUND_INTRO || room.phase === PHASES.ROUND_END) return null;
@@ -33,6 +33,18 @@ function questionView(room, { withAnswer, forPlayer = false }) {
     points: q.points,
     penalty: q.penalty,
   };
+  // 초성 힌트는 공개 시각 전에는 Display·참가자에게 보내지 않는다 (진행자·관리자는 미리 본다).
+  // 대신 언제 나오는지(hint.at, 멈춤 중이면 remainingMs)를 보내 화면에서 카운트다운한다.
+  const c = room.current;
+  if (c?.hint && !c.hint.shown && room.phase === PHASES.QUESTION_OPEN) {
+    const paused = c.pausedRemainingMs !== null;
+    view.hint = {
+      pending: true,
+      at: paused ? null : c.hint.showAt,
+      remainingMs: paused ? Math.max(0, c.hint.showAt - c.pausedAt) : null,
+    };
+    if (!staff) delete view.consonantHint;
+  }
   // 장문 타이핑은 원문을 보고 따라 치는 게임이라 원문을 항상 보낸다
   if (round.gameMode === GAME_MODES.LONG_TYPING) view.targetText = q.correctAnswer;
   if (withAnswer && q.correctAnswer !== null) view.correctAnswer = q.correctAnswer;
@@ -117,7 +129,7 @@ function baseView(room, role) {
       theme: round.theme,
       gameMode: round.gameMode,
     } : null,
-    question: inQuestion ? questionView(room, { withAnswer: staff || revealed, forPlayer: role === ROLES.PLAYER }) : null,
+    question: inQuestion ? questionView(room, { withAnswer: staff || revealed, forPlayer: role === ROLES.PLAYER, staff }) : null,
     audio: inQuestion ? room.audio : null,
     timer: inQuestion && c ? {
       deadlineAt: c.pausedRemainingMs === null ? c.deadlineAt : null,

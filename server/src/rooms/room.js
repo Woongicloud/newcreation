@@ -15,7 +15,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import {
-  PHASES, COMMANDS, ERRORS, EVENTS, GAME_MODES, DEFAULT_DISPLAY_SETTINGS,
+  PHASES, COMMANDS, ERRORS, EVENTS, GAME_MODES, DEFAULT_DISPLAY_SETTINGS, HINT_DELAY_DEFAULT,
 } from '../../../shared/protocol.js';
 import {
   roundLossCap, applyLossCap, judgeAnswer, rawDelta, reactionPoints,
@@ -56,6 +56,7 @@ export class Room extends EventEmitter {
     this.finishedAt = null;
     this._deadlineTimer = null;
     this._signalTimer = null;
+    this._hintTimer = null;
     this._rng = Math.random;
   }
 
@@ -315,6 +316,11 @@ export class Room extends EventEmitter {
       const delay = 1000 + this._rng() * (maxDelay - 1000);
       this.current.reaction = { signalAt: now + delay, signaled: false, results: [] };
     }
+    // 초성 힌트: 문제가 나오고 hintDelay 초 뒤에 공개 (진행자·관리자는 처음부터 본다)
+    if (round.gameMode === GAME_MODES.CONSONANT && question.consonantHint) {
+      const delay = Math.max(0, (question.hintDelay ?? HINT_DELAY_DEFAULT) * 1000);
+      this.current.hint = { showAt: now + delay, shown: delay === 0 };
+    }
     if (round.gameMode === GAME_MODES.EMOJI_FIND) {
       const ids = [...this.players.values()].filter((p) => p.online).map((p) => p.id);
       const { assignments, codeToPlayerId } = buildEmojiAssignments(ids, question);
@@ -344,13 +350,21 @@ export class Room extends EventEmitter {
         this.emit('state');
       }, Math.max(0, c.reaction.signalAt - now));
     }
+    if (c.hint && !c.hint.shown) {
+      this._hintTimer = setTimeout(() => {
+        c.hint.shown = true;
+        this.emit('state');
+      }, Math.max(0, c.hint.showAt - now));
+    }
   }
 
   _clearTimers() {
     clearTimeout(this._deadlineTimer);
     clearTimeout(this._signalTimer);
+    clearTimeout(this._hintTimer);
     this._deadlineTimer = null;
     this._signalTimer = null;
+    this._hintTimer = null;
   }
 
   // 접수 마감 (정답은 아직 공개하지 않음)
@@ -494,6 +508,7 @@ export class Room extends EventEmitter {
     c.pausedTotalMs += pausedFor;
     c.deadlineAt = now + c.pausedRemainingMs;
     if (c.reaction && !c.reaction.signaled) c.reaction.signalAt += pausedFor;
+    if (c.hint && !c.hint.shown) c.hint.showAt += pausedFor; // 멈춘 동안은 힌트 시계도 멈춘다
     c.pausedRemainingMs = null;
     c.pausedAt = null;
     this._armTimers();

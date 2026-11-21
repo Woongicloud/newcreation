@@ -1,6 +1,6 @@
 // 문제 만들기 — 편집 중인 세트는 업로드 JSON 과 같은 모양으로 들고 있는다
 // (그래서 불러오기·내보내기·검사를 그대로 할 수 있다).
-import { GAME_MODES as M } from '@shared/protocol.js';
+import { GAME_MODES as M, HINT_DELAY_DEFAULT } from '@shared/protocol.js';
 import { scaleFactor, scalePoints, SCORING_DEFAULTS } from '@shared/scoring.js';
 
 export const MODE_OPTIONS = [
@@ -38,7 +38,7 @@ export const CHOICE_MODES = new Set([M.MULTIPLE_CHOICE, M.IMAGE_MULTIPLE_CHOICE,
 export const MODE_HINT = {
   [M.MULTIPLE_CHOICE]: '보기 중 정답 하나를 체크하세요. 문제 사진은 선택 — 넣으면 프로젝터와 참가자 폰에 함께 나옵니다.',
   [M.SHORT_ANSWER]: '띄어쓰기·대소문자는 무시하고 비교합니다.',
-  [M.CONSONANT]: '정답을 적고 "초성 자동"을 누르면 힌트가 채워집니다.',
+  [M.CONSONANT]: '정답을 적고 "초성 자동"을 누르면 힌트가 채워집니다. 힌트는 문제가 나오고 정한 초(기본 5초) 뒤에 화면·폰에 공개됩니다.',
   [M.WORD_GUESS]: '문제에 빈칸을 _ 로 표시하세요. 예: 사 _ 나무',
   [M.IMAGE_QUIZ]: '이미지를 보고 정답을 입력하는 문제입니다.',
   [M.IMAGE_MULTIPLE_CHOICE]: '이미지를 보고 보기 중에서 고르는 문제입니다.',
@@ -56,7 +56,7 @@ export function newQuestion(mode) {
   if (mode === M.IMAGE_MEMORY) q.imageUrls = [''];
   if (mode === M.IMAGE_QUIZ || mode === M.IMAGE_MULTIPLE_CHOICE) q.imageUrl = '';
   if (mode === M.AUDIO_QUIZ) q.audioUrl = '';
-  if (mode === M.CONSONANT) q.consonantHint = '';
+  if (mode === M.CONSONANT) Object.assign(q, { consonantHint: '', hintDelay: HINT_DELAY_DEFAULT });
   if (mode === M.REACTION) Object.assign(q, { content: '신호가 뜨면 바로 누르세요!', timeLimit: 6 });
   if (mode === M.EMOJI_FIND) Object.assign(q, { content: '같은 이모지 세트를 가진 사람을 찾아 코드를 입력하세요!', timeLimit: 60, setSize: 3, groupSize: 2 });
   if (mode === M.LONG_TYPING) Object.assign(q, { content: '화면의 말씀을 정확하게 따라 입력하세요', timeLimit: 60 });
@@ -104,7 +104,7 @@ export function chosung(text) {
 }
 
 // 내보낼 때 빈 선택 항목은 뺀다 (필수 칸은 검사에서 걸리도록 그대로 둔다)
-const OPTIONAL = new Set(['points', 'penalty', 'answerImage', 'answerNote', 'imageUrl', 'audioUrl', 'passAccuracy', 'rankPoints', 'theme', 'emojiPool', 'acceptAnswers', 'answerAudio']);
+const OPTIONAL = new Set(['hintDelay', 'points', 'penalty', 'answerImage', 'answerNote', 'imageUrl', 'audioUrl', 'passAccuracy', 'rankPoints', 'theme', 'emojiPool', 'acceptAnswers', 'answerAudio']);
 export function cleanSet(set) {
   const clean = (obj) => {
     if (Array.isArray(obj)) return obj.map(clean);
