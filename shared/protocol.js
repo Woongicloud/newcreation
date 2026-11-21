@@ -1,7 +1,7 @@
 // v2 프로토콜 — 서버와 모든 화면이 공유하는 상태·명령·이벤트 이름.
 // 자세한 설명은 docs/PROTOCOL.md 참고.
 
-export { GAME_MODES, HINT_DELAY_DEFAULT } from './constants.js';
+export { GAME_MODES, HINT_DELAY_DEFAULT, isPageLink } from './constants.js';
 
 export const PROTOCOL_VERSION = 2;
 

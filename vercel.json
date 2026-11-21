@@ -3,6 +3,9 @@
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!media/|assets/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

@@ -2,7 +2,7 @@
 // validateQuizSet(raw) → { ok, errors: [{ path, message }], warnings: [...], set }
 // 정규화된 set 은 모든 문제에 points / penalty / timeLimit 이 채워져 있다.
 
-import { GAME_MODES, HINT_DELAY_DEFAULT } from './constants.js';
+import { GAME_MODES, HINT_DELAY_DEFAULT, isPageLink } from './constants.js';
 import { SCORING_DEFAULTS, normalizeAnswer, scaleFactor, scalePoints } from './scoring.js';
 
 const MODES = new Set(Object.values(GAME_MODES));
@@ -310,6 +310,11 @@ export function validateQuizSet(raw) {
         const audioUrl = resolveMediaUrl(q.audioUrl);
         if (audioUrl) out.audioUrl = audioUrl;
         if (mode === GAME_MODES.AUDIO_QUIZ && !audioUrl) err(`${qp}.audioUrl`, '오디오가 필요합니다.');
+
+        // 사운드클라우드·유튜브 같은 웹페이지 링크는 파일이 아니라 재생·표시가 안 된다
+        for (const [field, value] of [['audioUrl', out.audioUrl], ['answerAudio', out.answerAudio], ['answerImage', out.answerImage], ...(out.imageUrls || []).map((u) => ['imageUrl', u])]) {
+          if (isPageLink(value)) warn(`${qp}.${field}`, '웹페이지 링크(사운드클라우드·유튜브 등)는 재생·표시할 수 없습니다. 파일을 내려받아 ⑥ 파일에 올려 주세요.');
+        }
 
         if (mode === GAME_MODES.CONSONANT) {
           if (isStr(q.consonantHint)) out.consonantHint = q.consonantHint;

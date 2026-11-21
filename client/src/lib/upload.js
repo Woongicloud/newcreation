@@ -42,7 +42,15 @@ export async function uploadFile(token, original, kind = 'question', onStep = ()
     headers: { 'content-type': file.type || 'application/octet-stream' },
     body: file,
   }).catch(() => null);
-  if (!put?.ok) return { ok: false, message: `${original.name}: 스토리지에 올리지 못했습니다.` };
+  if (!put?.ok) {
+    // 실패 이유를 알 수 있게 (용량 초과·형식 제한·버킷 설정 등)
+    const detail = put ? await put.json().then((d) => d.message || d.error || '').catch(() => '') : '';
+    const reason = !put ? '연결 실패'
+      : put.status === 413 || /maximum|size|too large/i.test(detail) ? `파일이 너무 큽니다 (${formatSize(file.size)}) — Supabase 무료 요금제는 파일당 50MB까지입니다`
+        : /mime|type/i.test(detail) ? `이 형식(${file.type || '알 수 없음'})은 저장소에서 허용되지 않습니다 — Supabase media 버킷의 허용 형식을 확인하세요`
+          : `응답 ${put.status}${detail ? ` · ${detail}` : ''}`;
+    return { ok: false, message: `${original.name}: 스토리지에 올리지 못했습니다 (${reason})` };
+  }
   // 표시 이름은 원래 이름 그대로 (문제 세트에 원래 파일 이름을 적어도 찾을 수 있게)
   await api('/api/media/complete', { method: 'POST', token, body: { path: ticket.path, name: original.name, size: file.size } });
   return { ok: true, path: ticket.path, publicUrl: ticket.publicUrl, shrunk: file !== original };

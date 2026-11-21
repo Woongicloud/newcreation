@@ -187,3 +187,67 @@ export async function resolveMediaNames(set, media) {
   result.missing = [...new Set(result.missing)];
   return result;
 }
+
+// ── 주소 점검 (문제 만들기에서 미리보기가 안 될 때 원인 찾기) ─────────────
+// 파일 앞부분 몇 바이트로 실제 형식을 알아낸다 (확장자·content-type 은 틀릴 수 있다)
+export function sniffMedia(bytes) {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  const ascii = (from, to) => String.fromCharCode(...b.slice(from, to));
+  if (b.length < 4) return 'empty';
+  if (ascii(0, 3) === 'ID3' || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0)) return 'mp3'; // mp3 (ADTS aac 도 여기에)
+  if (ascii(4, 8) === 'ftyp') {
+    const brand = ascii(8, 12);
+    if (brand === 'qt  ') return 'mov';
+    if (brand.startsWith('M4A') || brand.startsWith('M4B')) return 'm4a';
+    return 'mp4';
+  }
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WAVE') return 'wav';
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'webp';
+  if (ascii(0, 4) === 'OggS') return 'ogg';
+  if (ascii(0, 4) === 'fLaC') return 'flac';
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'webm';
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpeg';
+  if (b[0] === 0x89 && ascii(1, 4) === 'PNG') return 'png';
+  if (ascii(0, 4) === 'GIF8') return 'gif';
+  const text = new TextDecoder().decode(b).trimStart().toLowerCase();
+  if (text.startsWith('<svg') || (text.startsWith('<?xml') && text.includes('<svg'))) return 'svg';
+  if (text.startsWith('<!doctype html') || text.startsWith('<html') || text.startsWith('<head') || text.startsWith('<')) return 'html';
+  if (text.startsWith('{')) return 'json';
+  return 'unknown';
+}
+
+const PRIVATE_HOST = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|\[?::1\]?$|.*\.internal$)/i;
+
+// 서버가 직접 주소에 가 보고 결과를 알려준다: 응답 코드, content-type, 크기, 실제 형식
+export async function probeMedia(rawUrl, { fetchImpl = fetch, timeoutMs = 8000 } = {}) {
+  let url;
+  try { url = new URL(String(rawUrl || '').trim()); } catch { throw new MediaError(400, '주소 형식이 아닙니다.'); }
+  if (!/^https?:$/.test(url.protocol)) throw new MediaError(400, 'http(s) 주소만 점검할 수 있습니다.');
+  if (PRIVATE_HOST.test(url.hostname)) throw new MediaError(400, '내부 주소는 점검할 수 없습니다.');
+  let res;
+  try {
+    res = await fetchImpl(url.href, { headers: { range: 'bytes=0-63' }, redirect: 'follow', signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    return { reachable: false, error: e?.name === 'TimeoutError' ? 'timeout' : 'network' };
+  }
+  // 앞부분만 읽고 끊는다 (서버가 range 를 무시하고 전체를 보내도 큰 파일을 다 받지 않도록)
+  let head = new Uint8Array();
+  try {
+    const reader = res.body?.getReader();
+    if (reader) {
+      const { value } = await reader.read();
+      head = value ? value.slice(0, 64) : head;
+      reader.cancel().catch(() => {});
+    }
+  } catch { /* 본문 없음 */ }
+  const range = res.headers.get('content-range');
+  const total = range ? Number(range.split('/')[1]) : Number(res.headers.get('content-length'));
+  return {
+    reachable: true,
+    status: res.status,
+    contentType: res.headers.get('content-type') || null,
+    size: Number.isFinite(total) && total > 0 ? total : null,
+    kind: res.status < 400 ? sniffMedia(head) : null,
+    host: url.hostname,
+  };
+}

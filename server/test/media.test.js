@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildServer } from '../src/app.js';
 import { createMemoryPersistence } from '../src/persistence/memory.js';
-import { createMediaService, createMemoryMediaAdapter, resolveMediaNames, fileType } from '../src/media.js';
+import { createMediaService, createMemoryMediaAdapter, resolveMediaNames, fileType, sniffMedia, probeMedia } from '../src/media.js';
+import { validateQuizSet } from '../../shared/quizSchema.js';
 
 process.env.ADMIN_PASSWORD = 'test-password';
 
@@ -68,6 +69,12 @@ describe('파일 관리 API', () => {
   });
   afterAll(() => server.close());
 
+  it('주소 점검은 관리자만, 내부 주소는 거절', async () => {
+    expect((await call('/api/media/probe', 'POST', { url: 'https://example.com/a.mp3' }, null)).status).toBe(401);
+    const res = await call('/api/media/probe', 'POST', { url: 'http://127.0.0.1:1/a.mp3' });
+    expect(res.status).toBe(400);
+  });
+
   it('관리자만 쓸 수 있고, 올리기→이름 변경→삭제가 된다', async () => {
     expect((await call('/api/media?kind=all', 'GET', null, null)).status).toBe(401);
     const ticket = (await call('/api/media/upload-url', 'POST', { filename: '서울.jpg', kind: 'question' })).body;
@@ -125,5 +132,48 @@ describe('문제 세트의 파일 이름 → 올린 파일 주소', () => {
   it('스토리지가 없으면 아무것도 바꾸지 않는다', async () => {
     const set = { rounds: [{ questions: [{ imageUrl: 'a.jpg' }] }] };
     expect((await resolveMediaNames(set, null)).set).toBe(set);
+  });
+});
+
+describe('주소 점검 (미리보기가 안 될 때 원인)', () => {
+  const bytes = (...parts) => new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p)));
+
+  it('앞부분 바이트로 실제 형식을 알아낸다', () => {
+    expect(sniffMedia(bytes('ID3', [3, 0, 0, 0]))).toBe('mp3');
+    expect(sniffMedia(bytes([0xff, 0xfb, 0x90, 0x00]))).toBe('mp3');
+    expect(sniffMedia(bytes([0, 0, 0, 0x20], 'ftypisom', [0, 0]))).toBe('mp4');
+    expect(sniffMedia(bytes([0, 0, 0, 0x20], 'ftypM4A ', [0, 0]))).toBe('m4a');
+    expect(sniffMedia(bytes([0, 0, 0, 0x14], 'ftypqt  ', [0, 0]))).toBe('mov');
+    expect(sniffMedia(bytes('RIFF', [0, 0, 0, 0], 'WAVE'))).toBe('wav');
+    expect(sniffMedia(bytes([0xff, 0xd8, 0xff, 0xe0]))).toBe('jpeg');
+    expect(sniffMedia(bytes([0x89], 'PNG', [13, 10]))).toBe('png');
+    expect(sniffMedia(bytes('\n<!DOCTYPE html><html>'))).toBe('html');
+  });
+
+  const fakeFetch = (status, body, headers = {}) => async () => new Response(body, { status, headers });
+
+  it('응답 코드·형식·크기를 알려주고, 내부 주소·이상한 주소는 거절한다', async () => {
+    const mp3 = await probeMedia('https://cdn.example/a.mp3', { fetchImpl: fakeFetch(206, bytes('ID3', [3, 0, 0, 0]), { 'content-type': 'audio/mpeg', 'content-range': 'bytes 0-63/4200000' }) });
+    expect(mp3).toMatchObject({ reachable: true, status: 206, kind: 'mp3', size: 4200000, contentType: 'audio/mpeg' });
+    const page = await probeMedia('https://soundcloud.com/x/y', { fetchImpl: fakeFetch(200, '<!doctype html><html>', { 'content-type': 'text/html' }) });
+    expect(page).toMatchObject({ status: 200, kind: 'html' });
+    const missing = await probeMedia('https://x.supabase.co/storage/v1/object/public/media/a.mp3', { fetchImpl: fakeFetch(400, '{"error":"Bucket not found"}') });
+    expect(missing).toMatchObject({ status: 400, kind: null });
+    const down = await probeMedia('https://cdn.example/a.mp3', { fetchImpl: async () => { throw new TypeError('fail'); } });
+    expect(down).toEqual({ reachable: false, error: 'network' });
+    await expect(probeMedia('http://localhost:3001/x')).rejects.toMatchObject({ status: 400 });
+    await expect(probeMedia('ftp://x/y')).rejects.toMatchObject({ status: 400 });
+    await expect(probeMedia('여행.mp3')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('문제 세트에 웹페이지 링크를 넣으면 경고', () => {
+    const r = validateQuizSet({ rounds: [{ gameMode: 'audio_quiz', questions: [
+      { content: '?', correctAnswer: 'a', audioUrl: 'https://soundcloud.com/someone/song' },
+      { content: '?', correctAnswer: 'a', audioUrl: 'https://cdn.example/song.mp3' },
+    ] }] });
+    expect(r.ok).toBe(true);
+    const paths = r.warnings.map((w) => w.path);
+    expect(paths).toContain('rounds[0].questions[0].audioUrl');
+    expect(paths).not.toContain('rounds[0].questions[1].audioUrl');
   });
 });

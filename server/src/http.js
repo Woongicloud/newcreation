@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { ROLES } from '../../shared/protocol.js';
 import { checkAdminPassword, createRateLimiter, signToken, verifyToken } from './auth.js';
-import { createMediaService, MediaError } from './media.js';
+import { createMediaService, MediaError, probeMedia } from './media.js';
 
 
 export function createApp({ registry, allowedOrigins }) {
@@ -65,6 +65,16 @@ export function createApp({ registry, allowedOrigins }) {
       res.status(502).json({ ok: false, message: '파일 저장소 요청에 실패했습니다.' });
     }
   };
+
+  // 문제 만들기에서 사진·음원 미리보기가 안 될 때: 서버가 주소에 가 보고 원인을 알려준다 (스토리지 없어도 동작)
+  app.post('/api/media/probe', requireAdmin, async (req, res) => {
+    try {
+      res.json({ ok: true, ...(await probeMedia(req.body?.url)) });
+    } catch (e) {
+      if (e instanceof MediaError) return res.status(e.status).json({ ok: false, message: e.message });
+      res.status(500).json({ ok: false, message: '점검하지 못했습니다.' });
+    }
+  });
 
   app.get('/api/media', requireAdmin, mediaRoute(async (req) => ({
     files: await media.list(['question', 'background', 'all'].includes(req.query.kind) ? req.query.kind : 'question'),
