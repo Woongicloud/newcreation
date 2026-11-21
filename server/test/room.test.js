@@ -522,3 +522,31 @@ describe('초성 추가 힌트 지연 공개', () => {
     expect((r3.warnings || []).filter((w) => w.path.endsWith('hintDelay'))).toEqual([]);
   });
 });
+
+describe('미디어 미리 받기', () => {
+  it('다음 문제의 사진·음원을 미리 알려주고, 정답 사진·음원은 접수 마감 뒤에만 알려준다', () => {
+    const set = makeSet({ rounds: [
+      { gameMode: 'image_quiz', questions: [
+        { content: 'Q1', imageUrl: 'q1.jpg', correctAnswer: 'a', answerImage: 'a1.jpg', answerAudio: 'a1.mp3', timeLimit: 10 },
+        { content: 'Q2', imageUrl: 'q2.jpg', correctAnswer: 'a', timeLimit: 10 },
+      ] },
+      { gameMode: 'audio_quiz', questions: [{ content: 'Q3', audioUrl: 'song.mp4', correctAnswer: 'a', timeLimit: 10 }] },
+    ] });
+    const { room, ids } = makeRoom({ set });
+    const display = () => viewFor(room, ROLES.DISPLAY).preload;
+    const player = () => viewFor(room, ROLES.PLAYER, ids[0]).preload;
+    expect(display()).toEqual({ images: ['/media/q1.jpg'], audio: [] }); // 대기실: 첫 문제
+    cmd(room, C.NEXT); // 라운드 안내
+    expect(display().images).toEqual(['/media/q1.jpg']);
+    cmd(room, C.NEXT); // Q1 접수 중 → 다음 문제(Q2)만, 정답 사진은 아직
+    expect(display()).toEqual({ images: ['/media/q2.jpg'], audio: [] });
+    expect(player()).toEqual({ images: ['/media/q2.jpg'], audio: [] });
+    vi.advanceTimersByTime(10_000); // 마감
+    expect(room.phase).toBe(PHASES.QUESTION_CLOSED);
+    expect(display()).toEqual({ images: ['/media/q2.jpg', '/media/a1.jpg'], audio: ['/media/a1.mp3'] });
+    expect(player()).toEqual({ images: ['/media/q2.jpg', '/media/a1.jpg'], audio: [] }); // 폰은 음원 없음
+    cmd(room, C.NEXT); cmd(room, C.NEXT); // 공개 → Q2
+    expect(display()).toEqual({ images: [], audio: ['/media/song.mp4'] }); // 다음 라운드 첫 문제의 음원
+    expect(player()).toBeNull();
+  });
+});

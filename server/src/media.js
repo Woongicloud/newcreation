@@ -136,3 +136,54 @@ export function createMemoryMediaAdapter({ withCatalog = true } = {}) {
     },
   };
 }
+
+// 문제 세트에 "최경운.jpg" 처럼 파일 이름만 적은 경우, ⑥ 파일에 올린 파일(표시 이름 또는 저장 이름)과 맞춰
+// 실제 주소로 바꾼다. 확장자를 빼고 적어도 하나로 정해지면 찾는다.
+// 못 찾은 이름은 그대로 둔다 (앱 기본 폴더 /media 의 파일일 수 있다 — 예: sample_image_1.svg).
+const MEDIA_FIELDS = ['imageUrl', 'audioUrl', 'answerImage', 'answerAudio'];
+const isBareName = (v) => typeof v === 'string' && v.trim() && !/^https?:\/\//i.test(v.trim()) && !v.trim().startsWith('/');
+const keyOf = (s) => String(s).normalize('NFC').trim().toLowerCase();
+const stem = (s) => keyOf(s).replace(/\.[a-z0-9]{2,5}$/, '');
+
+export async function resolveMediaNames(set, media) {
+  const result = { set, resolved: [], missing: [] };
+  if (!media || !set || !Array.isArray(set.rounds)) return result;
+  const bare = [];
+  for (const r of set.rounds) {
+    for (const q of r?.questions || []) {
+      for (const f of MEDIA_FIELDS) if (isBareName(q?.[f])) bare.push(q[f]);
+      if (Array.isArray(q?.imageUrls)) for (const u of q.imageUrls) if (isBareName(u)) bare.push(u);
+    }
+  }
+  if (!bare.length) return result;
+
+  let files;
+  try { files = await media.list('question'); } catch { return result; } // 스토리지를 못 읽으면 그대로 둔다
+  const exact = new Map();
+  const byStem = new Map();
+  // 최근 것이 앞에 오므로 같은 이름이면 최근 파일
+  for (const f of files) {
+    for (const k of [keyOf(f.name), keyOf(f.path.split('/').pop())]) if (!exact.has(k)) exact.set(k, f.publicUrl);
+    for (const k of [stem(f.name), stem(f.path.split('/').pop())]) byStem.set(k, byStem.has(k) && byStem.get(k) !== f.publicUrl ? null : f.publicUrl);
+  }
+  const find = (name) => exact.get(keyOf(name)) || (!/\.[a-z0-9]{2,5}$/i.test(name.trim()) ? byStem.get(stem(name)) : null) || null;
+
+  const copy = JSON.parse(JSON.stringify(set));
+  const swap = (value) => {
+    if (!isBareName(value)) return value;
+    const url = find(value);
+    if (url) { result.resolved.push(value); return url; }
+    result.missing.push(value);
+    return value;
+  };
+  for (const r of copy.rounds) {
+    for (const q of r?.questions || []) {
+      if (!q) continue;
+      for (const f of MEDIA_FIELDS) if (q[f] !== undefined) q[f] = swap(q[f]);
+      if (Array.isArray(q.imageUrls)) q.imageUrls = q.imageUrls.map(swap);
+    }
+  }
+  result.set = copy;
+  result.missing = [...new Set(result.missing)];
+  return result;
+}

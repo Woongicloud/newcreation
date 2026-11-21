@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GAME_MODES as M, HINT_DELAY_DEFAULT } from '@shared/protocol.js';
 import { CHOICE_LABELS } from '../../../lib/choiceColors.js';
 import { MODE_FIELDS, HAS_ANSWER, CHOICE_MODES, chosung } from './model.js';
@@ -10,11 +10,17 @@ const box = `${input} w-full`;
 // 이미지·오디오 주소 입력 + 미리보기 + 올린 파일에서 고르기
 export function MediaField({ title, value, onChange, files, kind = 'image', placeholder }) {
   const [picking, setPicking] = useState(false);
-  // ⑥ 파일 탭에서 올린 것 중 이 칸에 맞는 종류만
-  const choices = (files || []).filter((f) => f.folder !== 'backgrounds' && f.type === kind);
+  // ⑥ 파일 탭에서 올린 것 중 이 칸에 맞는 종류만 — 음원 칸에는 영상(mp4·webm)도: 소리만 재생된다
+  const kinds = kind === 'audio' ? ['audio', 'video'] : [kind];
+  const choices = (files || []).filter((f) => f.folder !== 'backgrounds' && kinds.includes(f.type));
   const url = value?.trim();
-  const picked = (files || []).find((f) => f.publicUrl === url);
-  const preview = url && (url.startsWith('http') || url.startsWith('/')) ? url : url ? `/media/${url}` : null;
+  // 주소 또는 파일 이름(⑥ 파일의 표시 이름·저장 이름)으로 올린 파일을 찾는다 — 이름만 적어도 방에 적용할 때 주소로 바뀐다
+  const lower = url?.normalize('NFC').toLowerCase();
+  const picked = url && (files || []).find((f) => f.publicUrl === url || f.name.normalize('NFC').toLowerCase() === lower
+    || f.path.split('/').pop().toLowerCase() === lower);
+  const preview = picked ? picked.publicUrl : url && (url.startsWith('http') || url.startsWith('/')) ? url : url ? `/media/${url}` : null;
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [preview]);
   return (
     <div>
       <span className={label}>{title}</span>
@@ -39,14 +45,15 @@ export function MediaField({ title, value, onChange, files, kind = 'image', plac
           {choices.map((f) => (
             <button type="button" key={f.path} onClick={() => { onChange(f.publicUrl); setPicking(false); }}
               className="w-full text-left px-2 py-1.5 rounded border border-slate-800 hover:border-sky-400 text-sm truncate">
-              🎵 {f.name}
+              {f.type === 'video' ? '🎞' : '🎵'} {f.name}{f.type === 'video' && <span className="text-xs text-slate-500"> (영상의 소리)</span>}
             </button>
           ))}
         </div>
       )}
-      {picked && <p className="text-xs text-slate-400 mt-1">📎 {picked.name}</p>}
-      {preview && kind === 'image' && <img src={preview} alt="" className="mt-2 h-20 rounded border border-slate-700 object-contain bg-slate-950" />}
-      {preview && kind === 'audio' && <audio src={preview} controls className="mt-2 h-8 w-full" />}
+      {picked && <p className="text-xs text-slate-400 mt-1">📎 올린 파일: {picked.name}</p>}
+      {broken && <p className="text-xs text-red-400 mt-1">⚠️ 이 주소의 파일을 불러오지 못했습니다. ⑥ 파일에 올린 파일을 고르거나 이름을 확인하세요.</p>}
+      {preview && kind === 'image' && <img src={preview} alt="" onError={() => setBroken(true)} className="mt-2 h-20 rounded border border-slate-700 object-contain bg-slate-950" />}
+      {preview && kind === 'audio' && <audio src={preview} controls preload="metadata" onError={() => setBroken(true)} className="mt-2 h-8 w-full" />}
     </div>
   );
 }
@@ -100,7 +107,7 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
       )}
 
       {fields.includes('audioUrl') && (
-        <div><MediaField title="오디오 파일" kind="audio" value={q.audioUrl} files={files} onChange={(v) => set({ audioUrl: v })} placeholder="파일명(media 폴더) 또는 https:// 주소 (mp3 등)" /><ErrorText name="audioUrl" /></div>
+        <div><MediaField title="오디오 파일" kind="audio" value={q.audioUrl} files={files} onChange={(v) => set({ audioUrl: v })} placeholder="올린 음원 고르기, 파일 이름, 또는 https:// 주소 (mp3·m4a·mp4 등)" /><ErrorText name="audioUrl" /></div>
       )}
 
       {CHOICE_MODES.has(mode) && (
@@ -226,7 +233,7 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
               </div>
               <div className="md:col-span-2">
                 <MediaField title="정답 공개 때 프로젝터에서 자동 재생할 음원 (선택 · 문제 음원과 달라도 됨)" kind="audio" value={q.answerAudio} files={files}
-                  onChange={(v) => set({ answerAudio: v })} placeholder="파일명(media 폴더) 또는 https:// 주소 (mp3 등)" />
+                  onChange={(v) => set({ answerAudio: v })} placeholder="올린 음원 고르기, 파일 이름, 또는 https:// 주소 (mp3·m4a·mp4 등)" />
                 <ErrorText name="answerAudio" />
               </div>
               <label className="md:col-span-2"><span className={label}>정답 아래 한 줄 설명 (선택)</span>

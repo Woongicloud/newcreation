@@ -20,6 +20,7 @@ import ImageMultipleChoice from '../../components/game-modes/ImageMultipleChoice
 import ImageMemory from '../../components/game-modes/ImageMemory.jsx';
 import EmojiFind from '../../components/game-modes/EmojiFind.jsx';
 import LongTyping from '../../components/game-modes/LongTyping.jsx';
+import { usePreload } from '../../lib/mediaCache.js';
 
 // 객관식에 문제 사진이 있으면 이미지 객관식처럼 사진 + 보기로 그린다
 const ChoiceWithPhoto = (props) => (props.question.imageUrl ? <ImageMultipleChoice {...props} /> : <MultipleChoice {...props} />);
@@ -116,6 +117,7 @@ export default function PlayPage() {
   const closed = useRoom((s) => s.closed);
   const rejoinFailed = useRoom((s) => s.rejoinFailed);
   const [showGuide, setShowGuide] = useState(false);
+  usePreload(state?.preload); // 다음 문제 사진을 미리 받아 둔다
 
   // 새로고침으로 들어온 경우 저장된 토큰으로 복귀
   useEffect(() => {

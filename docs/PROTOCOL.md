@@ -90,6 +90,8 @@ lobby → round_intro → question_open → question_closed → question_reveal
   "submittedCount": 12,
   "reaction": null,                 // 반응속도: { "signaled": false } → 신호 시점에 true
   "stats": null,                    // question_reveal: { answered, correct, choiceCounts?, reaction?, falseStarts? }
+  "preload": null,                  // Display·참가자: 미리 받아 둘 미디어 { images: [], audio: [] } — 다음 문제의 사진(·Display 는 음원),
+                                    //   접수 마감(question_closed) 뒤에는 지금 문제의 정답 사진·정답 음원도. 참가자에게는 audio 가 비어 있다
   "standings": null,                // 송출 중: { visible, scope, entries: [{ rank, group, unit, name, score }] } — 상위 10명
   "award": null,                    // awards: { index, total, type, title, reveal, step, steps, revealed, pool? }
   "audio": null                     // 문제 중: { target: 'question'|'answer'|null, playing, seq } — Display 는 seq 가 바뀔 때마다 처음부터 재생
