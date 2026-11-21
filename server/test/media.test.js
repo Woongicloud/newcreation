@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildServer } from '../src/app.js';
 import { createMemoryPersistence } from '../src/persistence/memory.js';
-import { createMediaService, createMemoryMediaAdapter, fileType } from '../src/media.js';
+import { createMediaService, createMemoryMediaAdapter, resolveMediaNames, fileType } from '../src/media.js';
 
 process.env.ADMIN_PASSWORD = 'test-password';
 
@@ -85,5 +85,45 @@ describe('파일 관리 API', () => {
     list = (await call('/api/media?kind=all')).body;
     expect(list.files.map((f) => f.name)).toEqual(['서울 야경']);
     expect((await call('/api/media', 'DELETE', { path: '../x' })).status).toBe(400);
+  });
+});
+
+describe('문제 세트의 파일 이름 → 올린 파일 주소', () => {
+  async function serviceWith(files) {
+    const adapter = createMemoryMediaAdapter();
+    const media = createMediaService(adapter);
+    for (const [name, path] of files) {
+      await adapter.createUploadUrl(path);
+      await media.complete(path, name, 1);
+    }
+    return media;
+  }
+
+  it('표시 이름·저장 이름·확장자 없는 이름을 찾아 바꾸고, 못 찾은 이름은 그대로 두고 알린다', async () => {
+    const media = await serviceWith([['최경운.JPG', 'questions/a1.jpg'], ['여행.mp4', 'questions/b2.mp4'], ['정답.png', 'questions/c3.png']]);
+    const set = { rounds: [{ gameMode: 'image_quiz', questions: [
+      { imageUrl: '최경운.jpg', answerImage: 'c3.png' },
+      { imageUrls: ['정답', 'https://x.example/y.png', '/media/sample_image_1.svg'], audioUrl: '여행.mp4', answerAudio: 'sample_image_1.svg' },
+    ] }] };
+    const out = await resolveMediaNames(set, media);
+    const [q1, q2] = out.set.rounds[0].questions;
+    expect(q1).toEqual({ imageUrl: 'https://files.example/questions/a1.jpg', answerImage: 'https://files.example/questions/c3.png' });
+    expect(q2.imageUrls).toEqual(['https://files.example/questions/c3.png', 'https://x.example/y.png', '/media/sample_image_1.svg']);
+    expect(q2.audioUrl).toBe('https://files.example/questions/b2.mp4');
+    expect(q2.answerAudio).toBe('sample_image_1.svg');
+    expect(out.missing).toEqual(['sample_image_1.svg']);
+    expect(set.rounds[0].questions[0].imageUrl).toBe('최경운.jpg'); // 원본은 그대로
+  });
+
+  it('확장자 없는 이름이 여러 파일에 걸리면 고르지 않는다', async () => {
+    const media = await serviceWith([['사진.jpg', 'questions/a.jpg'], ['사진.png', 'questions/b.png']]);
+    const out = await resolveMediaNames({ rounds: [{ questions: [{ imageUrl: '사진' }] }] }, media);
+    expect(out.set.rounds[0].questions[0].imageUrl).toBe('사진');
+    expect(out.missing).toEqual(['사진']);
+  });
+
+  it('스토리지가 없으면 아무것도 바꾸지 않는다', async () => {
+    const set = { rounds: [{ questions: [{ imageUrl: 'a.jpg' }] }] };
+    expect((await resolveMediaNames(set, null)).set).toBe(set);
   });
 });

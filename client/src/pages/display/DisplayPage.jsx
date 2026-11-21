@@ -9,6 +9,7 @@ import { themeOf } from '../../lib/themes.js';
 import { MODE_LABEL } from '../../lib/labels.js';
 import { useCountdown, useHintCountdown } from '../../hooks/useCountdown.js';
 import { useWakeLock } from '../../hooks/useWakeLock.js';
+import { usePreload, playableAudio } from '../../lib/mediaCache.js';
 import { CHOICE_HEX, CHOICE_LABELS } from '../../lib/choiceColors.js';
 import ChatOverlay from '../../components/chat/ChatOverlay.jsx';
 import StandingsBoard from './StandingsBoard.jsx';
@@ -245,11 +246,7 @@ function QuestionScreen({ state }) {
         {question.imageUrls?.length > 0 && (
           <div className={`absolute inset-0 grid grid-rows-1 gap-[1vw] ${question.imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {/* 남은 높이 안에서만 그린다 — 이미지가 보기 버튼을 덮지 않도록 */}
-            {question.imageUrls.map((src) => (
-              <div key={src} className="relative min-h-0 rounded-[1vw] overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)' }}>
-                <img src={src} alt="" className="absolute inset-0 w-full h-full object-contain" />
-              </div>
-            ))}
+            {question.imageUrls.map((src) => <StageImage key={src} src={src} />)}
           </div>
         )}
 
@@ -371,9 +368,11 @@ function DisplayAudio({ state, muted }) {
   const srcRef = useRef(src);
   srcRef.current = src;
 
+  const [loadError, setLoadError] = useState(null);
+
   const play = () => {
     const el = ref.current;
-    const cur = srcRef.current;
+    const cur = playableAudio(srcRef.current); // 미리 받아 둔 것이 있으면 그걸로 (끊김 없이 바로 시작)
     if (!el || !cur || muted) return;
     if (el.getAttribute('src') !== cur) el.setAttribute('src', cur);
     el.play().then(() => setBlocked(false)).catch((e) => {
@@ -411,11 +410,22 @@ function DisplayAudio({ state, muted }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    setLoadError(null);
     if (!src || muted) { el.pause(); setBlocked(false); return; }
-    if (el.getAttribute('src') !== src) el.setAttribute('src', src);
+    const url = playableAudio(src);
+    if (el.getAttribute('src') !== url) el.setAttribute('src', url);
     el.currentTime = 0;
     play();
   }, [audio?.seq, src, muted]);
+
+  // 파일을 못 읽으면(주소 오류·지원하지 않는 형식) 화면에 알린다
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const onError = () => { if (srcRef.current && el.getAttribute('src') !== SILENT_WAV) setLoadError(srcRef.current); };
+    el.addEventListener('error', onError);
+    return () => el.removeEventListener('error', onError);
+  }, []);
 
   if (muted) return null;
   return (
@@ -429,6 +439,12 @@ function DisplayAudio({ state, muted }) {
             🔊 화면을 한 번 눌러 주세요 — 브라우저가 소리를 막았습니다
           </span>
         </button>
+      )}
+      {loadError && loadError === src && (
+        <p className="absolute z-[55] bottom-[2vw] left-1/2 -translate-x-1/2 px-[1.6vw] py-[0.7vw] rounded-full font-bold max-w-[80vw] text-center"
+          style={{ fontSize: '1.3vw', background: 'rgba(127,29,29,0.9)', color: '#fff' }}>
+          ⚠️ 음원을 불러오지 못했습니다 — ⑥ 파일 탭에서 재생되는지, 문제에 넣은 주소가 맞는지 확인하세요
+        </p>
       )}
       {!unlocked && !blocked && (
         <p className="absolute z-[55] top-[1vw] left-1/2 -translate-x-1/2 px-[1.4vw] py-[0.5vw] rounded-full font-bold pointer-events-none"
@@ -447,6 +463,25 @@ function stageKey(state) {
   if (state.question) return `q-${state.question.id}-${state.question.gameMode === GAME_MODES.REACTION ? `${state.phase}-${!!state.reaction?.signaled}` : ''}`;
   if (state.award) return `award-${state.award.index}`;
   return `${state.phase}-${state.position?.round ?? ''}`;
+}
+
+// 문제 사진 한 장. 못 불러오면 빈칸 대신 안내를 띄운다 (주소·파일 확인용)
+function StageImage({ src }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return (
+    <div className="relative min-h-0 rounded-[1vw] overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)' }}>
+      {failed ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-[0.6vw] text-center px-[2vw]" style={{ color: 'var(--d-muted)' }}>
+          <p style={{ fontSize: '3vw' }}>🖼</p>
+          <p className="font-bold" style={{ fontSize: '1.5vw' }}>사진을 불러오지 못했습니다</p>
+          <p className="break-all" style={{ fontSize: '1vw' }}>{decodeURIComponent(src.split('/').pop() || '')}</p>
+        </div>
+      ) : (
+        <img src={src} alt="" className="absolute inset-0 w-full h-full object-contain" onError={() => setFailed(true)} />
+      )}
+    </div>
+  );
 }
 
 // 초성 힌트는 바로, 추가 힌트(예: '드라마')는 정한 초 뒤에. 공개 전에는 그 자리에 "n초 후 공개"
@@ -488,6 +523,7 @@ export default function DisplayPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const preview = params.get('preview') === '1'; // 관리자 설정 화면의 축소 미리보기
   useWakeLock();
+  usePreload(preview ? null : state?.preload); // 다음 문제의 사진·음원을 미리 받아 둔다
 
   async function join(code) {
     setError('');

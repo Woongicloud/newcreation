@@ -3,6 +3,7 @@ import { EVENTS, ROLES, ERRORS, COMMANDS } from '../../shared/protocol.js';
 import { validateQuizSet, validateAwards } from '../../shared/quizSchema.js';
 import { signToken, verifyToken } from './auth.js';
 import { buildContext, viewFor } from './rooms/views.js';
+import { createMediaService, resolveMediaNames } from './media.js';
 
 const CHAT_MAX_LENGTH = 60;
 const CHAT_MIN_INTERVAL_MS = 700;
@@ -18,6 +19,7 @@ const fail = (error, message) => ({ ok: false, error, message });
 export function attachSockets(io, registry) {
   // 접속 중인 소켓 수로 참가자 온라인 여부를 센다 (탭 여러 개·재접속 대비)
   const connections = new Map(); // `${code}:${playerId}` → count
+  const media = createMediaService(registry.persistence?.media); // 스토리지가 없으면 null
 
   function broadcastState(room, { includePlayers = true } = {}) {
     const ctx = buildContext(room);
@@ -222,8 +224,17 @@ export function attachSockets(io, registry) {
       return { ok: true, roomCode: room.roomCode, state: enter(room, ROLES.ADMIN) };
     }));
 
-    on(EVENTS.ADMIN_LOAD_SET, withRoom((room, { set }) => {
+    on(EVENTS.ADMIN_LOAD_SET, withRoom(async (room, { set: raw }) => {
+      // 파일 이름만 적은 사진·음원은 ⑥ 파일에 올린 파일 주소로 바꾼다
+      const named = await resolveMediaNames(raw, media);
+      const set = named.set;
       const result = validateQuizSet(set);
+      if (named.missing.length) {
+        result.warnings = [...(result.warnings || []), {
+          path: 'media',
+          message: `⑥ 파일에서 찾지 못한 이름: ${named.missing.slice(0, 5).join(', ')}${named.missing.length > 5 ? ` 외 ${named.missing.length - 5}개` : ''} — 이름을 확인하세요 (앱 기본 /media 폴더에서 찾습니다)`,
+        }];
+      }
       if (!result.ok) return { ok: false, error: ERRORS.BAD_REQUEST, message: '세트에 오류가 있습니다.', errors: result.errors, warnings: result.warnings };
       const loaded = room.loadSet(result.set);
       if (!loaded.ok) return loaded;

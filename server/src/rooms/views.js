@@ -100,6 +100,40 @@ function awardView(room, { full }) {
   return view;
 }
 
+// 미리 받아 둘 미디어 — 화면에 나오기 전에 받아 두면 문제가 열리자마자 사진·음원이 뜬다.
+//   다음에 열릴 문제의 사진(·Display 는 음원)
+//   접수가 마감된 뒤(QUESTION_CLOSED)에는 지금 문제의 정답 사진(·Display 는 정답 음원) — 더 낼 수 없으니 새도 무방
+export function upcomingQuestion(room) {
+  const set = room.set;
+  if (!set) return null;
+  const at = (r, q) => set.rounds[r]?.questions[q] || null;
+  switch (room.phase) {
+    case PHASES.LOBBY: return at(0, 0);
+    case PHASES.ROUND_INTRO: return at(room.r, room.q);
+    case PHASES.QUESTION_OPEN:
+    case PHASES.QUESTION_CLOSED:
+    case PHASES.QUESTION_REVEAL: return at(room.r, room.q + 1) || at(room.r + 1, 0);
+    case PHASES.ROUND_END: return at(room.r + 1, 0);
+    default: return null;
+  }
+}
+
+function preloadView(room, { audio }) {
+  const images = [];
+  const sounds = [];
+  const next = upcomingQuestion(room);
+  if (next) {
+    images.push(...(next.imageUrls || []));
+    if (audio && next.audioUrl) sounds.push(next.audioUrl);
+  }
+  const q = room.question;
+  if (q && room.phase === PHASES.QUESTION_CLOSED) {
+    if (q.answerImage) images.push(q.answerImage);
+    if (audio && q.answerAudio) sounds.push(q.answerAudio);
+  }
+  return images.length || sounds.length ? { images, audio: sounds } : null;
+}
+
 function baseView(room, role) {
   const c = room.current;
   const set = room.set;
@@ -185,6 +219,7 @@ export function viewFor(room, role, playerId, ctx = buildContext(room)) {
   if (role === ROLES.PLAYER) {
     const p = room.players.get(playerId);
     if (!p) return view;
+    view.preload = preloadView(room, { audio: false }); // 참가자 폰에서는 음원을 재생하지 않는다
     const c = room.current;
     const mine = c?.answers.get(p.id) || null;
     const emoji = c?.emoji?.assignments.get(p.id);
@@ -212,6 +247,7 @@ export function viewFor(room, role, playerId, ctx = buildContext(room)) {
   }
 
   if (role === ROLES.DISPLAY) {
+    view.preload = preloadView(room, { audio: true });
     // 대기실에서 입장한 사람 이름을 보여준다
     if (room.phase === PHASES.LOBBY) {
       view.lobby = [...room.players.values()].filter((p) => p.online)
