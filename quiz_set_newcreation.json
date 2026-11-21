@@ -1,0 +1,582 @@
+{
+  "sessionName": "청소년 주일 - 뉴크리에이션",
+  "scoring": {
+    "points": 5,
+    "penalty": 3
+  },
+  "teams": {
+    "labels": {
+      "group": "학년",
+      "unit": "브릿지"
+    },
+    "groups": [
+      {
+        "name": "중1",
+        "units": [
+          "브릿지 A",
+          "브릿지 B"
+        ]
+      },
+      {
+        "name": "중2",
+        "units": [
+          "브릿지 A",
+          "브릿지 B"
+        ]
+      },
+      {
+        "name": "고1",
+        "units": [
+          "브릿지 A"
+        ]
+      }
+    ],
+    "teamScore": "adjusted",
+    "teamScoreWeight": 3
+  },
+  "awards": {
+    "items": [
+      {
+        "type": "unit_ranking",
+        "title": "브릿지 순위",
+        "reveal": "countup"
+      },
+      {
+        "type": "random",
+        "title": "행운상",
+        "reveal": "slot",
+        "count": 3
+      },
+      {
+        "type": "individual_ranking",
+        "title": "개인 순위",
+        "reveal": "countup",
+        "top": 5
+      },
+      {
+        "type": "special",
+        "metric": "middle",
+        "title": "뉴평 중간값",
+        "reveal": "card"
+      }
+    ]
+  },
+  "rounds": [
+    {
+      "theme": "객관식 퀴즈",
+      "gameMode": "multiple_choice",
+      "questions": [
+        {
+          "content": "종교교회의 동 이름은?",
+          "choices": [
+            "내자동",
+            "적선동",
+            "도렴동",
+            "당주동"
+          ],
+          "correctAnswer": "도렴동",
+          "timeLimit": 20
+        },
+        {
+          "content": "저번 주 목사님 설교 제목은?",
+          "choices": [
+            "쩔?",
+            "찔!",
+            "쭐~",
+            "쫄?"
+          ],
+          "correctAnswer": "쫄?",
+          "timeLimit": 20
+        },
+        {
+          "content": "서울에서 제일 가까운 순서는?",
+          "choices": [
+            "블라디보스토크 - 상하이 - 도쿄 - 베이징",
+            "타이베이 - 싱가포르 - 베를린 - 시드니",
+            "뉴델리 - 이스탄불 - 로스앤젤레스 - 런던",
+            "울란바토르 - 뉴델리 - 파리 - 런던"
+          ],
+          "correctAnswer": "타이베이 - 싱가포르 - 베를린 - 시드니",
+          "timeLimit": 20
+        },
+        {
+          "content": "예배당에 있는 촬영용 방송 카메라는 몇 대일까요?",
+          "choices": [
+            "3대",
+            "4대",
+            "5대",
+            "6대"
+          ],
+          "correctAnswer": "5대",
+          "timeLimit": 20
+        },
+        {
+          "content": "예수님이 만난 제자 빌립, 야고보, 베드로 중 성경에 예수님이 제자로 부른 순서는 무엇일까요?",
+          "choices": [
+            "베드로 - 야고보 - 빌립",
+            "빌립 - 베드로 - 야고보",
+            "베드로 - 빌립 - 야고보",
+            "야고보 - 빌립 - 베드로"
+          ],
+          "correctAnswer": "베드로 - 빌립 - 야고보",
+          "timeLimit": 25,
+          "answerNote": "요한복음 1장: 베드로 → 다음 날 빌립 / 마태복음 4장: 야고보·요한"
+        }
+      ]
+    },
+    {
+      "theme": "초성 퀴즈 — 드라마·영화·아이돌·예능",
+      "gameMode": "consonant",
+      "standingsAfter": true,
+      "questions": [
+        {
+          "content": "[드라마] 초성을 보고 제목을 맞춰보세요",
+          "consonantHint": "ㅁㄷㄱ ㅈㅅㅇ ㅁㄱㅊㅎㄱ ㅆㅇㄱ ㅇㄷ",
+          "hintDelay": 5,
+          "correctAnswer": "모두가 자신의 무가치함과 싸우고 있다",
+          "timeLimit": 30
+        },
+        {
+          "content": "[드라마] 초성을 보고 제목을 맞춰보세요",
+          "consonantHint": "ㅊㄱㅇ",
+          "hintDelay": 5,
+          "correctAnswer": "참교육",
+          "timeLimit": 30
+        },
+        {
+          "content": "[드라마] 초성을 보고 제목을 맞춰보세요",
+          "consonantHint": "ㅂㅇㅇㄱㅈㅁ",
+          "hintDelay": 5,
+          "correctAnswer": "백일의 거짓말",
+          "timeLimit": 30
+        },
+        {
+          "content": "[영화] 초성을 보고 제목을 맞춰보세요",
+          "consonantHint": "ㅇㄱ ㅅㄴ ㄴㅈ",
+          "hintDelay": 5,
+          "correctAnswer": "왕과 사는 남자",
+          "timeLimit": 30
+        },
+        {
+          "content": "[영화] 초성을 보고 제목을 맞춰보세요",
+          "consonantHint": "ㅅㄹㅇ ㅎㅊㅍ ㄱㄹㅂㅅㅇ ㅈㅅ",
+          "hintDelay": 5,
+          "correctAnswer": "사랑의 하츄핑: 고래보석의 전설",
+          "timeLimit": 30
+        },
+        {
+          "content": "[유행어] 초성을 보고 맞춰보세요",
+          "consonantHint": "ㄱㅎㄴ ㄱㄹㄱㅇ ㅈㄷ",
+          "hintDelay": 5,
+          "correctAnswer": "기회는 그립감이 좋다",
+          "timeLimit": 30
+        },
+        {
+          "content": "[아이돌] 그룹 이름을 맞춰보세요",
+          "consonantHint": "ㅌㅁㄹㅇㅂㅇㅌㄱㄷ",
+          "hintDelay": 5,
+          "correctAnswer": "투모로우바이투게더",
+          "timeLimit": 30,
+          "acceptAnswers": [
+            "TXT",
+            "투바투"
+          ]
+        },
+        {
+          "content": "[성경] 성경 책 이름을 맞춰보세요",
+          "consonantHint": "ㄷㅅㄹㄴㄱㅎㅅ",
+          "hintDelay": 5,
+          "correctAnswer": "데살로니가후서",
+          "timeLimit": 30
+        }
+      ]
+    },
+    {
+      "theme": "선생님 TMI",
+      "gameMode": "multiple_choice",
+      "questions": [
+        {
+          "content": "종교교회 중고등부를 졸업한 선생님만 묶인 그룹은?",
+          "choices": [
+            "송형석 - 최경운 - 김현우",
+            "임예원 - 박정환 - 한수빈",
+            "손혜림 - 박세진 - 이한나",
+            "김준기 - 박수연 - 김새롬"
+          ],
+          "correctAnswer": "손혜림 - 박세진 - 이한나",
+          "timeLimit": 20
+        }
+      ]
+    },
+    {
+      "theme": "사진 보고 맞추기 ① 어릴 때 사진",
+      "gameMode": "image_multiple_choice",
+      "questions": [
+        {
+          "content": "어릴 때 사진! 이 선생님은 누구일까요?",
+          "imageUrl": "",
+          "choices": [
+            "최경운",
+            "송형석",
+            "이승은",
+            "김현우"
+          ],
+          "correctAnswer": "최경운",
+          "timeLimit": 20
+        },
+        {
+          "content": "어릴 때 사진! 이 선생님은 누구일까요?",
+          "imageUrl": "",
+          "choices": [
+            "박정환",
+            "임예원",
+            "최경운",
+            "이승은"
+          ],
+          "correctAnswer": "임예원",
+          "timeLimit": 20
+        },
+        {
+          "content": "어릴 때 사진! 이 선생님은 누구일까요?",
+          "imageUrl": "",
+          "choices": [
+            "송형석",
+            "이승은",
+            "박정환",
+            "김현우"
+          ],
+          "correctAnswer": "김현우",
+          "timeLimit": 20
+        },
+        {
+          "content": "어릴 때 사진! 이 선생님은 누구일까요?",
+          "imageUrl": "",
+          "choices": [
+            "임예원",
+            "김현우",
+            "최경운",
+            "송형석"
+          ],
+          "correctAnswer": "송형석",
+          "timeLimit": 20
+        },
+        {
+          "content": "어릴 때 사진! 이 선생님은 누구일까요?",
+          "imageUrl": "",
+          "choices": [
+            "김현우",
+            "최경운",
+            "박정환",
+            "이승은"
+          ],
+          "correctAnswer": "이승은",
+          "timeLimit": 20
+        },
+        {
+          "content": "어릴 때 사진! 이 선생님은 누구일까요?",
+          "imageUrl": "",
+          "choices": [
+            "이승은",
+            "임예원",
+            "송형석",
+            "박정환"
+          ],
+          "correctAnswer": "박정환",
+          "timeLimit": 20
+        }
+      ]
+    },
+    {
+      "theme": "사진 보고 맞추기 ② 요즘 트렌드",
+      "gameMode": "image_quiz",
+      "questions": [
+        {
+          "content": "요즘 유행하는 이것! 이름이 뭘까요?",
+          "imageUrl": "",
+          "correctAnswer": "L을 가져가",
+          "acceptAnswers": [
+            "L 가져가"
+          ],
+          "timeLimit": 30
+        },
+        {
+          "content": "요즘 유행하는 이것! 이름이 뭘까요?",
+          "imageUrl": "",
+          "correctAnswer": "한정선",
+          "timeLimit": 30
+        },
+        {
+          "content": "요즘 유행하는 이것! 이름이 뭘까요?",
+          "imageUrl": "",
+          "correctAnswer": "피자설기",
+          "timeLimit": 30
+        },
+        {
+          "content": "요즘 유행하는 이것! 이름이 뭘까요?",
+          "imageUrl": "",
+          "correctAnswer": "우사기",
+          "timeLimit": 30
+        }
+      ]
+    },
+    {
+      "theme": "사진 보고 맞추기 ③ 데블스 플랜 — 네모 세기",
+      "gameMode": "image_quiz",
+      "questions": [
+        {
+          "content": "사진 속 네모(사각형)는 모두 몇 개일까요? 숫자만 입력하세요",
+          "imageUrl": "",
+          "correctAnswer": "",
+          "timeLimit": 60
+        },
+        {
+          "content": "사진 속 네모(사각형)는 모두 몇 개일까요? 숫자만 입력하세요",
+          "imageUrl": "",
+          "correctAnswer": "",
+          "timeLimit": 60
+        },
+        {
+          "content": "사진 속 네모(사각형)는 모두 몇 개일까요? 숫자만 입력하세요",
+          "imageUrl": "",
+          "correctAnswer": "",
+          "timeLimit": 60
+        }
+      ]
+    },
+    {
+      "theme": "사진 보고 맞추기 ④ 여기가 어디일까요?",
+      "gameMode": "image_quiz",
+      "standingsAfter": true,
+      "questions": [
+        {
+          "content": "여기가 어디일까요?",
+          "imageUrl": "",
+          "correctAnswer": "빅벤",
+          "acceptAnswers": [
+            "런던",
+            "영국",
+            "런던 빅벤",
+            "엘리자베스 타워"
+          ],
+          "answerNote": "영국 런던 — 빅벤",
+          "timeLimit": 30
+        },
+        {
+          "content": "여기가 어디일까요?",
+          "imageUrl": "",
+          "correctAnswer": "기자 피라미드",
+          "acceptAnswers": [
+            "피라미드",
+            "이집트",
+            "카이로",
+            "이집트 피라미드"
+          ],
+          "answerNote": "이집트 카이로 — 기자 피라미드",
+          "timeLimit": 30
+        },
+        {
+          "content": "여기가 어디일까요?",
+          "imageUrl": "",
+          "correctAnswer": "울룰루",
+          "acceptAnswers": [
+            "호주",
+            "오스트레일리아",
+            "에어즈 록"
+          ],
+          "answerNote": "호주 — 울룰루",
+          "timeLimit": 30
+        },
+        {
+          "content": "여기가 어디일까요?",
+          "imageUrl": "",
+          "correctAnswer": "북항친수공원",
+          "acceptAnswers": [
+            "부산",
+            "북항",
+            "부산 북항",
+            "부산 북항친수공원"
+          ],
+          "answerNote": "부산 — 북항친수공원",
+          "timeLimit": 30
+        },
+        {
+          "content": "여기가 어디일까요?",
+          "imageUrl": "",
+          "correctAnswer": "타임스퀘어",
+          "acceptAnswers": [
+            "뉴욕",
+            "타임스 스퀘어",
+            "타임즈스퀘어",
+            "뉴욕 타임스퀘어"
+          ],
+          "answerNote": "미국 뉴욕 — 타임스퀘어",
+          "timeLimit": 30
+        }
+      ]
+    },
+    {
+      "theme": "말씀 타이핑",
+      "gameMode": "long_typing",
+      "questions": [
+        {
+          "content": "화면의 말씀을 정확하게 따라 입력하세요",
+          "correctAnswer": "보좌에 앉으신 이가 이르시되 보라 내가 만물을 새롭게 하노라 하시고 또 이르시되 이 말은 신실하고 참되니 기록하라 하시고",
+          "answerNote": "요한계시록 21:5",
+          "timeLimit": 90
+        }
+      ]
+    },
+    {
+      "theme": "AI 노래 맞추기",
+      "gameMode": "audio_quiz",
+      "standingsAfter": true,
+      "questions": [
+        {
+          "content": "AI가 부른 이 노래의 제목은?",
+          "audioUrl": "",
+          "correctAnswer": "여행",
+          "answerNote": "볼빨간사춘기 — 여행",
+          "timeLimit": 40
+        },
+        {
+          "content": "AI가 부른 이 노래의 제목은?",
+          "audioUrl": "",
+          "correctAnswer": "LOVE DIVE",
+          "acceptAnswers": [
+            "러브다이브",
+            "러브 다이브"
+          ],
+          "answerNote": "IVE — LOVE DIVE",
+          "timeLimit": 40
+        },
+        {
+          "content": "AI가 부른 이 노래의 제목은?",
+          "audioUrl": "",
+          "correctAnswer": "레드레드",
+          "acceptAnswers": [
+            "REDRED",
+            "RED RED"
+          ],
+          "answerNote": "코르티스 — 레드레드",
+          "timeLimit": 40
+        },
+        {
+          "content": "AI가 부른 이 노래의 제목은?",
+          "audioUrl": "",
+          "correctAnswer": "사자와 어린양",
+          "timeLimit": 40
+        },
+        {
+          "content": "AI가 부른 이 노래의 제목은?",
+          "audioUrl": "",
+          "correctAnswer": "멈출 수 없네",
+          "timeLimit": 40
+        },
+        {
+          "content": "AI가 부른 이 노래의 제목은?",
+          "audioUrl": "",
+          "correctAnswer": "미라클 제너레이션",
+          "acceptAnswers": [
+            "Miracle Generation"
+          ],
+          "timeLimit": 40
+        }
+      ]
+    },
+    {
+      "theme": "이모지 짝꿍 찾기",
+      "gameMode": "emoji_find",
+      "questions": [
+        {
+          "content": "같은 이모지 세트를 가진 짝꿍을 찾아 그 사람의 코드를 입력하세요!",
+          "emojiPool": [
+            "🐴",
+            "🐓",
+            "🐬",
+            "🐇",
+            "🐮",
+            "🙊",
+            "🐼",
+            "🐹",
+            "🦁",
+            "🐯",
+            "🦊",
+            "🐶"
+          ],
+          "setSize": 3,
+          "groupSize": 2,
+          "timeLimit": 90
+        },
+        {
+          "content": "같은 이모지 세트를 가진 짝꿍을 찾아 그 사람의 코드를 입력하세요!",
+          "emojiPool": [
+            "🍩",
+            "🍨",
+            "🍧",
+            "🎂",
+            "🍰",
+            "🍡",
+            "🍮",
+            "🍫",
+            "🍇",
+            "🍐",
+            "🥭",
+            "🍌",
+            "🍍",
+            "🍋",
+            "🍎",
+            "🍅",
+            "🥕",
+            "🧄",
+            "🌰",
+            "🥜",
+            "🍏",
+            "🍖",
+            "🍗",
+            "🥩"
+          ],
+          "setSize": 5,
+          "groupSize": 2,
+          "timeLimit": 90
+        },
+        {
+          "content": "같은 이모지 세트를 가진 짝꿍을 찾아 그 사람의 코드를 입력하세요!",
+          "emojiPool": [
+            "⚽",
+            "⚾",
+            "🥎",
+            "🏀",
+            "🏐",
+            "🏈",
+            "🏉",
+            "🎱",
+            "🎳",
+            "🏓",
+            "🏸",
+            "🎾",
+            "🤿",
+            "🥊",
+            "🚲",
+            "🚌",
+            "🚖",
+            "✈️",
+            "❤️",
+            "🎬",
+            "🔬",
+            "🩺",
+            "🧬",
+            "🎸",
+            "🎺",
+            "🎷",
+            "🪕",
+            "🎻",
+            "🔨"
+          ],
+          "setSize": 5,
+          "groupSize": 2,
+          "timeLimit": 90
+        }
+      ]
+    }
+  ]
+}
