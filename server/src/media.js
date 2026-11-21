@@ -109,6 +109,28 @@ export function createMediaService(adapter) {
       await catalogCall(() => adapter.catalog.remove(p), null);
       return { path: p };
     },
+
+    // 저장소 점검: 공개 여부, 용량 제한, 허용 형식 → 사람이 알아들을 문제 목록
+    async status() {
+      if (!adapter.bucketStatus) return { checked: false, problems: [] };
+      const b = await adapter.bucketStatus();
+      const problems = [];
+      if (!b.exists) problems.push({ code: 'bucket_missing', message: 'media 저장 공간(버킷)이 없습니다. 아래 버튼으로 만들 수 있습니다.' });
+      else if (!b.public) problems.push({ code: 'bucket_private', message: 'media 저장 공간(버킷)이 비공개라서, 올린 사진·음원을 프로젝터와 폰에서 열 수 없습니다 (응답 400).' });
+      if (b.allowedMimeTypes?.length) {
+        const types = b.allowedMimeTypes.join(', ');
+        const allows = (t) => b.allowedMimeTypes.some((m) => m === t || m === `${t.split('/')[0]}/*` || m === '*/*');
+        const blocked = ['image/jpeg', 'audio/mpeg', 'video/mp4'].filter((t) => !allows(t));
+        if (blocked.length) problems.push({ code: 'mime_limited', message: `저장소가 일부 형식만 받습니다 (${types}). ${blocked.join(', ')} 파일은 올릴 수 없습니다 — Supabase Storage 의 media 버킷 설정에서 허용 형식을 비워 주세요.` });
+      }
+      return { checked: true, ...b, problems };
+    },
+
+    async makePublic() {
+      if (!adapter.makePublic) throw new MediaError(501, '이 저장소에서는 지원하지 않습니다.');
+      await adapter.makePublic();
+      return this.status();
+    },
   };
 }
 
@@ -117,9 +139,13 @@ export function createMemoryMediaAdapter({ withCatalog = true } = {}) {
   const objects = new Map(); // path → { size, createdAt }
   const names = new Map();
   const missing = () => Object.assign(new Error('catalog missing'), { code: 'CATALOG_MISSING' });
+  const bucket = { exists: true, public: true, fileSizeLimit: null, allowedMimeTypes: null };
   return {
     objects,
     names,
+    bucket,
+    async bucketStatus() { return { ...bucket }; },
+    async makePublic() { bucket.exists = true; bucket.public = true; },
     async createUploadUrl(path) {
       objects.set(path, { size: 0, createdAt: new Date().toISOString() });
       return { path, token: 't', signedUrl: `memory://upload/${path}`, publicUrl: `https://files.example/${path}` };
@@ -236,10 +262,12 @@ export async function probeMedia(rawUrl, { fetchImpl = fetch, timeoutMs = 8000 }
     const reader = res.body?.getReader();
     if (reader) {
       const { value } = await reader.read();
-      head = value ? value.slice(0, 64) : head;
+      head = value ? value.slice(0, res.status >= 400 ? 300 : 64) : head;
       reader.cancel().catch(() => {});
     }
   } catch { /* 본문 없음 */ }
+  // 오류 응답의 설명 (Supabase: "Bucket not found" = 비공개·없는 버킷, "Object not found" = 파일 없음)
+  const errorText = res.status >= 400 ? new TextDecoder().decode(head).slice(0, 300) : null;
   const range = res.headers.get('content-range');
   const total = range ? Number(range.split('/')[1]) : Number(res.headers.get('content-length'));
   return {
@@ -247,7 +275,8 @@ export async function probeMedia(rawUrl, { fetchImpl = fetch, timeoutMs = 8000 }
     status: res.status,
     contentType: res.headers.get('content-type') || null,
     size: Number.isFinite(total) && total > 0 ? total : null,
-    kind: res.status < 400 ? sniffMedia(head) : null,
+    kind: res.status < 400 ? sniffMedia(head.slice(0, 64)) : null,
     host: url.hostname,
+    ...(errorText ? { errorText } : {}),
   };
 }

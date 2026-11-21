@@ -153,6 +153,29 @@ export function createSupabasePersistence({ url, serviceKey }) {
         const { error } = await db.storage.from(MEDIA_BUCKET).remove([path]);
         if (error) throw new Error(`[storage] ${error.message}`);
       },
+      // 버킷 상태: 공개가 아니면 프로젝터·폰이 사진·음원 주소를 열 수 없다 (응답 400)
+      async bucketStatus() {
+        const { data, error } = await db.storage.getBucket(MEDIA_BUCKET);
+        if (error || !data) return { exists: false, public: false, message: error?.message || null };
+        return {
+          exists: true,
+          public: !!data.public,
+          fileSizeLimit: data.file_size_limit ?? null,
+          allowedMimeTypes: data.allowed_mime_types ?? null,
+        };
+      },
+      // 관리자가 ⑥ 파일 탭에서 버튼으로 요청할 때만: 버킷을 공개로 (없으면 공개로 만든다). 다른 설정은 그대로
+      async makePublic() {
+        const { data } = await db.storage.getBucket(MEDIA_BUCKET);
+        const { error } = data
+          ? await db.storage.updateBucket(MEDIA_BUCKET, {
+            public: true,
+            fileSizeLimit: data.file_size_limit ?? undefined,
+            allowedMimeTypes: data.allowed_mime_types ?? undefined,
+          })
+          : await db.storage.createBucket(MEDIA_BUCKET, { public: true });
+        if (error) throw new Error(`[storage] ${error.message}`);
+      },
       catalog: {
         async list() {
           const { data, error } = await db.from('media_files').select('path, name');

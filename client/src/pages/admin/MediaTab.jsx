@@ -89,7 +89,27 @@ export default function MediaTab({ token, flash }) {
   const [folder, setFolder] = useState('question');
   const [progress, setProgress] = useState('');
 
+  const [storage, setStorage] = useState(null); // 저장소 점검 결과 { public, problems }
+  const [fixing, setFixing] = useState(false);
+
+  async function checkStorage() {
+    const res = await api('/api/media/status', { token });
+    if (res.ok) setStorage(res);
+  }
+
+  async function makePublic() {
+    if (!window.confirm('media 저장 공간을 공개로 바꿉니다.\n\n공개여야 프로젝터·참가자 폰이 올린 사진·음원을 열 수 있습니다. 파일 주소(임의 문자열)를 아는 사람은 그 파일을 볼 수 있게 됩니다. 올리기·지우기는 계속 관리자만 할 수 있습니다.')) return;
+    setFixing(true);
+    const res = await api('/api/media/make-public', { method: 'POST', token });
+    setFixing(false);
+    if (!res.ok) return flash(res.message || '바꾸지 못했습니다. Supabase 대시보드에서 직접 바꿔 주세요.');
+    setStorage(res);
+    flash('공개로 바꿨습니다. 사진·음원이 보이는지 다시 확인해 주세요.');
+    load();
+  }
+
   async function load() {
+    checkStorage();
     const res = await api('/api/media?kind=all', { token });
     if (res.status === 503) return setState({ available: false, catalog: false, error: '' });
     if (!res.ok) return setState((s) => ({ ...s, error: res.message || '목록을 불러오지 못했습니다.' }));
@@ -140,8 +160,25 @@ export default function MediaTab({ token, flash }) {
     );
   }
 
+  const fixable = storage?.problems?.some((p) => p.code === 'bucket_private' || p.code === 'bucket_missing');
+
   return (
     <div className="space-y-4">
+      {storage?.problems?.length > 0 && (
+        <div className="rounded-2xl border border-red-700 bg-red-950/40 p-4 space-y-2">
+          <p className="font-bold text-red-300">⚠️ 저장소 설정 문제 — 올린 파일이 화면에 안 나오는 원인입니다</p>
+          {storage.problems.map((p) => <p key={p.code} className="text-sm text-red-100">{p.message}</p>)}
+          {fixable && (
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button className={btnPrimary} disabled={fixing} onClick={makePublic}>{fixing ? '바꾸는 중…' : '🔓 공개로 바꾸기'}</button>
+              <span className="text-xs text-slate-400">
+                또는 Supabase 대시보드 → Storage → media → Edit bucket → Public bucket 켜기
+                (SQL: <code>update storage.buckets set public = true where id = 'media';</code>)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
       <Panel title="파일 올리기" action={<button className={btn} onClick={load}>새로고침</button>}>
         <p className="text-sm text-slate-400">
           사진(png·jpg·gif·webp·svg), 음원(mp3·wav·m4a·ogg·aac), 영상(mp4·webm)을 올릴 수 있습니다. 여러 개를 한 번에 골라도 됩니다.

@@ -75,6 +75,14 @@ describe('파일 관리 API', () => {
     expect(res.status).toBe(400);
   });
 
+  it('저장소 점검·공개로 바꾸기는 관리자만', async () => {
+    expect((await call('/api/media/status', 'GET', null, null)).status).toBe(401);
+    expect((await call('/api/media/make-public', 'POST', {}, null)).status).toBe(401);
+    const s = await call('/api/media/status');
+    expect(s.body).toMatchObject({ ok: true, public: true, problems: [] });
+    expect((await call('/api/media/make-public', 'POST', {})).body).toMatchObject({ ok: true, public: true });
+  });
+
   it('관리자만 쓸 수 있고, 올리기→이름 변경→삭제가 된다', async () => {
     expect((await call('/api/media?kind=all', 'GET', null, null)).status).toBe(401);
     const ticket = (await call('/api/media/upload-url', 'POST', { filename: '서울.jpg', kind: 'question' })).body;
@@ -175,5 +183,29 @@ describe('주소 점검 (미리보기가 안 될 때 원인)', () => {
     const paths = r.warnings.map((w) => w.path);
     expect(paths).toContain('rounds[0].questions[0].audioUrl');
     expect(paths).not.toContain('rounds[0].questions[1].audioUrl');
+  });
+});
+
+describe('저장소 점검', () => {
+  it('비공개 버킷·형식 제한을 알려주고, 버튼(요청)으로 공개로 바꾼다', async () => {
+    const adapter = createMemoryMediaAdapter();
+    const media = createMediaService(adapter);
+    expect((await media.status()).problems).toEqual([]);
+    adapter.bucket.public = false;
+    adapter.bucket.allowedMimeTypes = ['image/*'];
+    const s = await media.status();
+    expect(s.problems.map((p) => p.code)).toEqual(['bucket_private', 'mime_limited']);
+    expect(s.problems[1].message).toContain('audio/mpeg');
+    const after = await media.makePublic();
+    expect(after.public).toBe(true);
+    expect(after.problems.map((p) => p.code)).toEqual(['mime_limited']); // 형식 제한은 손대지 않는다
+  });
+
+  it('오류 응답의 설명을 함께 돌려준다 (버킷 비공개와 파일 없음 구분)', async () => {
+    const res = (body) => async () => new Response(body, { status: 400, headers: { 'content-type': 'application/json' } });
+    const priv = await probeMedia('https://x.supabase.co/storage/v1/object/public/media/q/a.mp3', { fetchImpl: res('{"statusCode":"404","error":"Bucket not found","message":"Bucket not found"}') });
+    expect(priv).toMatchObject({ status: 400, errorText: expect.stringContaining('Bucket not found') });
+    const gone = await probeMedia('https://x.supabase.co/storage/v1/object/public/media/q/a.mp3', { fetchImpl: res('{"statusCode":"404","error":"not_found","message":"Object not found"}') });
+    expect(gone.errorText).toContain('Object not found');
   });
 });

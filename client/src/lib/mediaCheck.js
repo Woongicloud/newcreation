@@ -40,8 +40,15 @@ export async function diagnoseMedia(url, { kind = 'audio', mediaError = null } =
   if (!probe.reachable) return probe.error === 'timeout' ? '⏱ 주소가 응답하지 않습니다 (시간 초과).' : '🌐 주소에 연결하지 못했습니다. 주소가 맞는지 확인하세요.';
   if (probe.status === 404) return '❌ 파일이 없습니다 (응답 404) — 지워졌거나 주소가 틀렸습니다.';
   if (probe.status >= 400) {
+    const text = probe.errorText || '';
+    if (/bucket not found/i.test(text)) {
+      return '🔒 media 저장 공간(버킷)이 비공개라서 파일을 내주지 않습니다. ⑥ 파일 탭 위쪽의 [공개로 바꾸기] 버튼을 눌러 주세요.';
+    }
+    if (/object not found|not_found|not found/i.test(text)) {
+      return '❌ 저장소에 이 파일이 없습니다 — 올리기가 끝나지 않았거나 지워졌습니다. ⑥ 파일에서 다시 올려 주세요.';
+    }
     if (/supabase\.co$/.test(probe.host || '')) {
-      return `🔒 스토리지가 파일을 내주지 않습니다 (응답 ${probe.status}). Supabase Storage 의 media 버킷이 Public 인지, 파일이 지워지지 않았는지 확인하세요.`;
+      return `🔒 스토리지가 파일을 내주지 않습니다 (응답 ${probe.status}${text ? ` · ${text.slice(0, 80)}` : ''}). ⑥ 파일 탭 위쪽의 저장소 점검을 확인하세요.`;
     }
     return `❌ 주소가 오류를 돌려줬습니다 (응답 ${probe.status}).`;
   }
