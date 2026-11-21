@@ -78,7 +78,7 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
       </div>
 
       {fields.includes('imageUrl') && (
-        <div><MediaField title="문제 이미지" value={q.imageUrl} files={files} onChange={(v) => set({ imageUrl: v })} /><ErrorText name="imageUrl" /></div>
+        <div><MediaField title={mode === M.MULTIPLE_CHOICE ? '문제 사진 (선택)' : '문제 이미지'} value={q.imageUrl} files={files} onChange={(v) => set({ imageUrl: v })} /><ErrorText name="imageUrl" /></div>
       )}
 
       {fields.includes('imageUrls') && (

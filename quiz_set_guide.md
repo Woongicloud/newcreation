@@ -250,8 +250,20 @@ NewCreation에 올리는 문제 세트 형식. 관리자 화면 **① 준비 →
 | 추가 필드 | 타입 | 필수 | 설명 |
 |---------|------|------|------|
 | `choices` | array(string) | ✅ | 선택지 4개 (반드시 4개, 순서대로 ①②③④) |
+| `imageUrl` | string | 선택 | 문제 사진 (파일명 또는 URL). 넣으면 프로젝터 문제 아래와 참가자 폰 보기 위에 함께 나옴. 여러 장은 `imageUrls` |
 
 > `correctAnswer`는 `choices` 중 하나와 정확히 일치해야 함.
+
+사진을 넣은 예:
+
+```json
+{
+  "content": "이 사진 속 장소는?",
+  "imageUrl": "jerusalem.jpg",
+  "choices": ["예루살렘", "베들레헴", "나사렛", "갈릴리"],
+  "correctAnswer": "예루살렘"
+}
+```
 
 ---
 

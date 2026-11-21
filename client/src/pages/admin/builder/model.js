@@ -19,7 +19,7 @@ export const MODE_OPTIONS = [
 
 // 모드별로 보여줄 입력칸
 export const MODE_FIELDS = {
-  [M.MULTIPLE_CHOICE]: ['choices'],
+  [M.MULTIPLE_CHOICE]: ['imageUrl', 'choices'], // 사진은 선택
   [M.IMAGE_MULTIPLE_CHOICE]: ['imageUrl', 'choices'],
   [M.IMAGE_MEMORY]: ['imageUrls', 'choices'],
   [M.SHORT_ANSWER]: ['correctAnswer'],
@@ -36,7 +36,7 @@ export const HAS_ANSWER = (mode) => mode !== M.REACTION && mode !== M.EMOJI_FIND
 export const CHOICE_MODES = new Set([M.MULTIPLE_CHOICE, M.IMAGE_MULTIPLE_CHOICE, M.IMAGE_MEMORY]);
 
 export const MODE_HINT = {
-  [M.MULTIPLE_CHOICE]: '보기 중 정답 하나를 체크하세요.',
+  [M.MULTIPLE_CHOICE]: '보기 중 정답 하나를 체크하세요. 문제 사진은 선택 — 넣으면 프로젝터와 참가자 폰에 함께 나옵니다.',
   [M.SHORT_ANSWER]: '띄어쓰기·대소문자는 무시하고 비교합니다.',
   [M.CONSONANT]: '정답을 적고 "초성 자동"을 누르면 힌트가 채워집니다.',
   [M.WORD_GUESS]: '문제에 빈칸을 _ 로 표시하세요. 예: 사 _ 나무',
@@ -72,8 +72,11 @@ export function convertQuestion(q, mode) {
   if (HAS_ANSWER(mode) && q.correctAnswer) next.correctAnswer = q.correctAnswer;
   if ((MODE_FIELDS[mode] || []).includes('correctAnswer') && q.acceptAnswers?.length) next.acceptAnswers = q.acceptAnswers;
   if (CHOICE_MODES.has(mode) && Array.isArray(q.choices)) next.choices = q.choices;
-  if (q.imageUrl && 'imageUrl' in next) next.imageUrl = q.imageUrl;
-  if (q.imageUrl && 'imageUrls' in next) next.imageUrls = [q.imageUrl];
+  // 문제 사진은 새 모드에 사진 칸이 있으면 옮긴다 (여러 장 → 한 장 칸이면 첫 장)
+  const fields = MODE_FIELDS[mode] || [];
+  const images = q.imageUrls?.filter((u) => u?.trim()).length ? q.imageUrls.filter((u) => u?.trim()) : (q.imageUrl ? [q.imageUrl] : []);
+  if (images.length && fields.includes('imageUrl')) next.imageUrl = images[0];
+  if (images.length && fields.includes('imageUrls')) next.imageUrls = images;
   return next;
 }
 

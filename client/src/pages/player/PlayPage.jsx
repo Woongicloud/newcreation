@@ -21,13 +21,16 @@ import ImageMemory from '../../components/game-modes/ImageMemory.jsx';
 import EmojiFind from '../../components/game-modes/EmojiFind.jsx';
 import LongTyping from '../../components/game-modes/LongTyping.jsx';
 
+// 객관식에 문제 사진이 있으면 이미지 객관식처럼 사진 + 보기로 그린다
+const ChoiceWithPhoto = (props) => (props.question.imageUrl ? <ImageMultipleChoice {...props} /> : <MultipleChoice {...props} />);
+
 const TEXT_MODES = {
   [GAME_MODES.SHORT_ANSWER]: ShortAnswer,
   [GAME_MODES.CONSONANT]: ConsonantQuiz,
   [GAME_MODES.WORD_GUESS]: WordGuess,
   [GAME_MODES.IMAGE_QUIZ]: ImageQuiz,
   [GAME_MODES.AUDIO_QUIZ]: AudioQuiz,
-  [GAME_MODES.MULTIPLE_CHOICE]: MultipleChoice,
+  [GAME_MODES.MULTIPLE_CHOICE]: ChoiceWithPhoto,
   [GAME_MODES.IMAGE_MULTIPLE_CHOICE]: ImageMultipleChoice,
   [GAME_MODES.IMAGE_MEMORY]: ImageMemory,
 };
