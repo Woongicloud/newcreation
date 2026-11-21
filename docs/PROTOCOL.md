@@ -82,6 +82,9 @@ lobby → round_intro → question_open → question_closed → question_reveal
                 "timeLimit": 20, "points": 150, "penalty": 50 },
                 // correctAnswer 는 진행자·관리자에게 항상, 나머지는 question_reveal 에서만
                 // answerImage·answerNote(정답 참고 사진·설명)는 모든 역할에 question_reveal 에서만
+                // 초성 힌트 공개 전(hintDelay 초가 안 지남): Display·참가자에게는 consonantHint 없이
+                //   "hint": { "pending": true, "at": 공개 시각(ms), "remainingMs": null } (일시정지 중이면 at=null, remainingMs=남은 ms)
+                //   진행자·관리자는 consonantHint 와 hint 를 함께 받는다. 공개 시점·마감 후에는 hint 가 빠진다
   "timer": { "deadlineAt": 1794400020000, "paused": false, "remainingMs": null },
                 // 매초 tick 은 없다. 화면이 deadlineAt - (now + 시계 차이) 로 계산
   "submittedCount": 12,

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useHintCountdown } from '../../hooks/useCountdown.js';
 
 export default function ConsonantQuiz({ question, onSubmit, hasSubmitted, correctAnswer, submittedAnswer }) {
   const [text, setText] = useState('');
+  const hintIn = useHintCountdown(question.hint);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -12,12 +14,18 @@ export default function ConsonantQuiz({ question, onSubmit, hasSubmitted, correc
   return (
     <form onSubmit={handleSubmit} className="w-full px-2 space-y-5">
       {/* 초성 힌트 */}
-      {question.consonantHint && (
+      {(question.consonantHint || hintIn != null) && (
         <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl py-6 text-center shadow-sm">
           <p className="text-slate-500 text-sm mb-2">초성 힌트</p>
-          <p className="text-5xl font-bold text-amber-500 tracking-[0.3em]">
-            {question.consonantHint}
-          </p>
+          {question.consonantHint ? (
+            <p className="text-5xl font-bold text-amber-500 tracking-[0.3em]">
+              {question.consonantHint}
+            </p>
+          ) : (
+            <p className="text-2xl font-bold text-slate-400 py-2">
+              💡 <span className="tabular-nums text-amber-500">{hintIn}</span>초 후 공개
+            </p>
+          )}
         </div>
       )}
 

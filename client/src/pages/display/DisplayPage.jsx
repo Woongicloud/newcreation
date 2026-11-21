@@ -7,7 +7,7 @@ import { joinRoom, useRoom } from '../../lib/connection.js';
 import { appUrl } from '../../lib/session.js';
 import { themeOf } from '../../lib/themes.js';
 import { MODE_LABEL } from '../../lib/labels.js';
-import { useCountdown } from '../../hooks/useCountdown.js';
+import { useCountdown, useHintCountdown } from '../../hooks/useCountdown.js';
 import { useWakeLock } from '../../hooks/useWakeLock.js';
 import { CHOICE_HEX, CHOICE_LABELS } from '../../lib/choiceColors.js';
 import ChatOverlay from '../../components/chat/ChatOverlay.jsx';
@@ -228,9 +228,7 @@ function QuestionScreen({ state }) {
           </div>
         </div>
 
-        {mode === GAME_MODES.CONSONANT && question.consonantHint && (
-          <p className="font-black tracking-[0.4em] text-center" style={{ fontSize: '5vw', color: 'var(--d-accent)' }}>{question.consonantHint}</p>
-        )}
+        {mode === GAME_MODES.CONSONANT && <ConsonantHint question={question} />}
 
         <p className="font-question leading-snug whitespace-pre-wrap" style={{ fontSize: mode === GAME_MODES.LONG_TYPING ? '2.2vw' : '3.6vw' }}>
           {question.content}
@@ -399,6 +397,27 @@ function stageKey(state) {
   if (state.question) return `q-${state.question.id}-${state.question.gameMode === GAME_MODES.REACTION ? `${state.phase}-${!!state.reaction?.signaled}` : ''}`;
   if (state.award) return `award-${state.award.index}`;
   return `${state.phase}-${state.position?.round ?? ''}`;
+}
+
+// 초성 힌트: 공개 전에는 같은 자리에 "n초 후 공개"를 보여준다 (힌트 글자는 서버가 아직 보내지 않음)
+function ConsonantHint({ question }) {
+  const seconds = useHintCountdown(question.hint);
+  if (!question.consonantHint && seconds == null) return null;
+  // 힌트가 나와도 문제 글이 밀리지 않도록 같은 높이를 미리 잡아 둔다
+  return (
+    <div className="flex items-center justify-center" style={{ minHeight: '7.5vw' }}>
+      {question.consonantHint ? (
+        <motion.p initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+          className="font-black tracking-[0.4em] text-center leading-none" style={{ fontSize: '5vw', color: 'var(--d-accent)' }}>
+          {question.consonantHint}
+        </motion.p>
+      ) : (
+        <p className="font-bold text-center" style={{ fontSize: '2.4vw', color: 'var(--d-muted)' }}>
+          💡 초성 힌트 <span className="tabular-nums" style={{ color: 'var(--d-accent)' }}>{seconds}</span>초 후 공개
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function DisplayPage() {

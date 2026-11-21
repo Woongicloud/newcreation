@@ -121,3 +121,17 @@ describe('문제 만들기 — 객관식 문제 사진', () => {
     expect(convertQuestion(q, M.SHORT_ANSWER).imageUrl).toBeUndefined();
   });
 });
+
+describe('문제 만들기 — 초성 힌트 공개 시점', () => {
+  it('새 초성 문제는 5초 뒤 공개로 시작하고, 비우면 내보낼 때 빠져 서버 기본값(5초)을 쓴다', () => {
+    expect(newQuestion(M.CONSONANT).hintDelay).toBe(5);
+    const q = { content: '수도는?', correctAnswer: '서울', consonantHint: 'ㅅㅇ', timeLimit: 20 };
+    const set = newSet();
+    set.rounds = [{ theme: 'R', gameMode: M.CONSONANT, questions: [{ ...q, hintDelay: 8 }, { ...q, hintDelay: undefined }] }];
+    const out = cleanSet(set);
+    expect(out.rounds[0].questions.map((x) => x.hintDelay)).toEqual([8, undefined]);
+    const { ok, set: checked } = validateQuizSet(out);
+    expect(ok).toBe(true);
+    expect(checked.rounds[0].questions.map((x) => x.hintDelay)).toEqual([8, 5]);
+  });
+});

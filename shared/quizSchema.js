@@ -2,7 +2,7 @@
 // validateQuizSet(raw) → { ok, errors: [{ path, message }], warnings: [...], set }
 // 정규화된 set 은 모든 문제에 points / penalty / timeLimit 이 채워져 있다.
 
-import { GAME_MODES } from './constants.js';
+import { GAME_MODES, HINT_DELAY_DEFAULT } from './constants.js';
 import { SCORING_DEFAULTS, normalizeAnswer, scaleFactor, scalePoints } from './scoring.js';
 
 const MODES = new Set(Object.values(GAME_MODES));
@@ -314,6 +314,11 @@ export function validateQuizSet(raw) {
         if (mode === GAME_MODES.CONSONANT) {
           if (isStr(q.consonantHint)) out.consonantHint = q.consonantHint;
           else err(`${qp}.consonantHint`, '초성 힌트가 필요합니다.');
+          // 힌트는 문제가 나오고 hintDelay 초 뒤에 공개 (0 이면 바로)
+          out.hintDelay = num(q.hintDelay, `${qp}.hintDelay`, HINT_DELAY_DEFAULT, { max: 600 });
+          if (out.hintDelay !== undefined && out.hintDelay >= out.timeLimit) {
+            warn(`${qp}.hintDelay`, `힌트 공개(${out.hintDelay}초)가 제한 시간(${out.timeLimit}초) 안에 오지 않습니다. 마감 때 공개됩니다.`);
+          }
         }
 
         if (mode === GAME_MODES.LONG_TYPING) {
