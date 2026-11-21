@@ -86,10 +86,11 @@ export default function HostControls({ compact = false }) {
         {question ? (
           <>
             <p className="text-lg font-bold leading-snug">{question.content}</p>
-            {question.consonantHint && (
-              <p className="text-amber-300 font-bold tracking-widest">
-                {question.consonantHint}
-                {hintIn != null && <span className="ml-2 text-xs font-normal tracking-normal text-slate-400">화면 공개까지 {hintIn}초</span>}
+            {question.consonantHint && <p className="text-amber-300 font-bold tracking-widest">{question.consonantHint}</p>}
+            {question.extraHint && (
+              <p className="text-amber-200 text-sm">
+                💡 추가 힌트: <span className="font-bold">{question.extraHint}</span>
+                {hintIn != null && <span className="ml-2 text-xs text-slate-400">화면 공개까지 {hintIn}초</span>}
               </p>
             )}
             {question.correctAnswer !== undefined && (

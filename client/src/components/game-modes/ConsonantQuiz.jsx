@@ -14,17 +14,17 @@ export default function ConsonantQuiz({ question, onSubmit, hasSubmitted, correc
   return (
     <form onSubmit={handleSubmit} className="w-full px-2 space-y-5">
       {/* 초성 힌트 */}
-      {(question.consonantHint || hintIn != null) && (
+      {question.consonantHint && (
         <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl py-6 text-center shadow-sm">
           <p className="text-slate-500 text-sm mb-2">초성 힌트</p>
-          {question.consonantHint ? (
-            <p className="text-5xl font-bold text-amber-500 tracking-[0.3em]">
-              {question.consonantHint}
-            </p>
-          ) : (
-            <p className="text-2xl font-bold text-slate-400 py-2">
-              💡 <span className="tabular-nums text-amber-500">{hintIn}</span>초 후 공개
-            </p>
+          <p className="text-5xl font-bold text-amber-500 tracking-[0.3em]">
+            {question.consonantHint}
+          </p>
+          {/* 추가 힌트: 정한 초 뒤에 공개 */}
+          {question.extraHint ? (
+            <p className="mt-4 inline-block px-4 py-1.5 rounded-full bg-amber-100 text-amber-800 text-lg font-bold">💡 {question.extraHint}</p>
+          ) : hintIn != null && (
+            <p className="mt-4 text-sm font-semibold text-slate-400">💡 추가 힌트 <span className="tabular-nums text-amber-500">{hintIn}</span>초 후 공개</p>
           )}
         </div>
       )}

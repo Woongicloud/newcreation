@@ -152,17 +152,23 @@ export default function QuestionEditor({ uid, mode, q, index, total, errors = []
 
       {fields.includes('consonantHint') && (
         <div>
-          <span className={label}>초성 힌트 · 공개 시점</span>
-          <div className="flex flex-wrap gap-2 items-center">
-            <input className={`${box} flex-1 min-w-[8rem] tracking-widest`} value={q.consonantHint || ''} onChange={(e) => set({ consonantHint: e.target.value })} />
+          <span className={label}>초성 힌트 (바로 공개)</span>
+          <div className="flex gap-2">
+            <input className={`${box} flex-1 tracking-widest`} value={q.consonantHint || ''} onChange={(e) => set({ consonantHint: e.target.value })} />
             <button type="button" className={btn} disabled={!q.correctAnswer} onClick={() => set({ consonantHint: chosung(q.correctAnswer) })}>초성 자동</button>
-            <label className="flex items-center gap-1 text-sm text-slate-300" title="문제가 나오고 몇 초 뒤에 힌트를 보여줄지 (0 = 바로)">
+          </div>
+          <ErrorText name="consonantHint" />
+          <span className={`${label} mt-3`}>추가 힌트 (선택) · 공개 시점</span>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input className={`${box} flex-1 min-w-[8rem]`} value={q.extraHint || ''} placeholder="예: 드라마, 영화, 아이돌"
+              onChange={(e) => set({ extraHint: e.target.value })} />
+            <label className="flex items-center gap-1 text-sm text-slate-300" title="문제가 나오고 몇 초 뒤에 추가 힌트를 보여줄지 (0 = 바로)">
               <input type="number" min="0" max="600" className={`${input} w-20 text-right`} placeholder={String(HINT_DELAY_DEFAULT)}
                 value={q.hintDelay ?? ''} onChange={(e) => set({ hintDelay: num(e.target.value) })} />
               초 후 공개
             </label>
           </div>
-          <ErrorText name="consonantHint" />
+          <ErrorText name="extraHint" />
           <ErrorText name="hintDelay" />
         </div>
       )}

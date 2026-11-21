@@ -130,50 +130,57 @@
       "standingsAfter": true,
       "questions": [
         {
-          "content": "[드라마] 초성을 보고 제목을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㅁㄷㄱ ㅈㅅㅇ ㅁㄱㅊㅎㄱ ㅆㅇㄱ ㅇㄷ",
+          "extraHint": "드라마",
           "hintDelay": 5,
           "correctAnswer": "모두가 자신의 무가치함과 싸우고 있다",
           "timeLimit": 30
         },
         {
-          "content": "[드라마] 초성을 보고 제목을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㅊㄱㅇ",
+          "extraHint": "드라마",
           "hintDelay": 5,
           "correctAnswer": "참교육",
           "timeLimit": 30
         },
         {
-          "content": "[드라마] 초성을 보고 제목을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㅂㅇㅇㄱㅈㅁ",
+          "extraHint": "드라마",
           "hintDelay": 5,
           "correctAnswer": "백일의 거짓말",
           "timeLimit": 30
         },
         {
-          "content": "[영화] 초성을 보고 제목을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㅇㄱ ㅅㄴ ㄴㅈ",
+          "extraHint": "영화",
           "hintDelay": 5,
           "correctAnswer": "왕과 사는 남자",
           "timeLimit": 30
         },
         {
-          "content": "[영화] 초성을 보고 제목을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㅅㄹㅇ ㅎㅊㅍ ㄱㄹㅂㅅㅇ ㅈㅅ",
+          "extraHint": "영화",
           "hintDelay": 5,
           "correctAnswer": "사랑의 하츄핑: 고래보석의 전설",
           "timeLimit": 30
         },
         {
-          "content": "[유행어] 초성을 보고 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㄱㅎㄴ ㄱㄹㄱㅇ ㅈㄷ",
+          "extraHint": "유행어",
           "hintDelay": 5,
           "correctAnswer": "기회는 그립감이 좋다",
           "timeLimit": 30
         },
         {
-          "content": "[아이돌] 그룹 이름을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㅌㅁㄹㅇㅂㅇㅌㄱㄷ",
+          "extraHint": "아이돌",
           "hintDelay": 5,
           "correctAnswer": "투모로우바이투게더",
           "timeLimit": 30,
@@ -183,8 +190,9 @@
           ]
         },
         {
-          "content": "[성경] 성경 책 이름을 맞춰보세요",
+          "content": "초성을 보고 맞춰보세요!",
           "consonantHint": "ㄷㅅㄹㄴㄱㅎㅅ",
+          "extraHint": "성경",
           "hintDelay": 5,
           "correctAnswer": "데살로니가후서",
           "timeLimit": 30

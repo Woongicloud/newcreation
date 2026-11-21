@@ -354,37 +354,87 @@ function Stage({ state }) {
 }
 
 // Display 의 음원 재생기. 서버의 audio 상태(seq)가 바뀔 때마다 따라간다.
-// 브라우저가 자동 재생을 막으면(화면을 한 번도 누르지 않은 경우) "소리 켜기" 버튼을 띄운다.
+// 브라우저는 그 페이지를 한 번도 누르지 않았으면 소리 재생을 막는다(자동 재생 정책).
+// 그래서 화면 아무 곳이나 클릭·키 입력(무선 프레젠터 포함) 한 번으로 소리를 켠다:
+//   - 켜기 전에는 구석에 "소리 꺼짐" 안내를 띄운다
+//   - 그때 같은 <audio> 를 한 번 재생해 두어(iPad 등) 이후 진행자 신호만으로 재생된다
+//   - 막힌 채 재생 신호가 오면 화면 전체가 "눌러서 재생"이 되고, 누르면 바로 그 음원을 튼다
+const SILENT_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAACAgICA';
+
 function DisplayAudio({ state, muted }) {
   const ref = useRef(null);
   const [blocked, setBlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(() => !!navigator.userActivation?.hasBeenActive);
   const audio = state.audio;
   const q = state.question;
   const src = audio?.playing ? (audio.target === 'answer' ? q?.answerAudio : q?.audioUrl) : null;
+  const srcRef = useRef(src);
+  srcRef.current = src;
 
   const play = () => {
     const el = ref.current;
-    if (!el || !src) return;
-    el.play().then(() => setBlocked(false)).catch((e) => { if (e?.name === 'NotAllowedError') setBlocked(true); });
+    const cur = srcRef.current;
+    if (!el || !cur || muted) return;
+    if (el.getAttribute('src') !== cur) el.setAttribute('src', cur);
+    el.play().then(() => setBlocked(false)).catch((e) => {
+      if (e?.name === 'NotAllowedError') setBlocked(true);
+      else console.warn('[audio]', e?.name, e?.message, cur);
+    });
   };
+
+  // 첫 클릭·키 입력: 소리 잠금 해제. 기다리던 음원이 있으면 바로 재생
+  useEffect(() => {
+    if (muted) return undefined;
+    const onGesture = () => {
+      setUnlocked(true);
+      const el = ref.current;
+      if (!el) return;
+      if (srcRef.current) { play(); return; }
+      // 재생할 음원이 아직 없으면 무음으로 한 번 재생해 이 플레이어를 허용 상태로 만든다
+      el.muted = true;
+      el.setAttribute('src', SILENT_WAV);
+      el.play().catch(() => {}).finally(() => {
+        el.muted = false;
+        if (el.getAttribute('src') !== SILENT_WAV) return; // 그 사이 진짜 음원이 시작됐으면 건드리지 않는다
+        el.pause();
+        el.removeAttribute('src');
+      });
+    };
+    window.addEventListener('pointerdown', onGesture, true);
+    window.addEventListener('keydown', onGesture, true);
+    return () => {
+      window.removeEventListener('pointerdown', onGesture, true);
+      window.removeEventListener('keydown', onGesture, true);
+    };
+  }, [muted]);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (!src || muted) { el.pause(); return; }
+    if (!src || muted) { el.pause(); setBlocked(false); return; }
     if (el.getAttribute('src') !== src) el.setAttribute('src', src);
     el.currentTime = 0;
     play();
   }, [audio?.seq, src, muted]);
 
+  if (muted) return null;
   return (
     <>
       <audio ref={ref} preload="auto" className="hidden" />
-      {blocked && src && !muted && (
-        <button onClick={play} className="absolute z-[60] left-1/2 -translate-x-1/2 bottom-[2vw] px-[2vw] py-[1vw] rounded-full font-bold shadow-xl"
-          style={{ fontSize: '1.6vw', background: 'var(--d-accent)', color: 'var(--d-on-accent)' }}>
-          🔊 브라우저가 소리를 막았습니다 — 여기를 눌러 재생
+      {blocked && src && (
+        // 화면 전체가 재생 버튼 — 프로젝터 PC 어디를 눌러도 된다
+        <button onClick={play} className="absolute inset-0 z-[60] flex items-end justify-center pb-[3vw] bg-black/30">
+          <span className="px-[2.4vw] py-[1.2vw] rounded-full font-bold shadow-xl animate-pulse"
+            style={{ fontSize: '2vw', background: 'var(--d-accent)', color: 'var(--d-on-accent)' }}>
+            🔊 화면을 한 번 눌러 주세요 — 브라우저가 소리를 막았습니다
+          </span>
         </button>
+      )}
+      {!unlocked && !blocked && (
+        <p className="absolute z-[55] top-[1vw] left-1/2 -translate-x-1/2 px-[1.4vw] py-[0.5vw] rounded-full font-bold pointer-events-none"
+          style={{ fontSize: '1.1vw', background: 'rgba(0,0,0,0.55)', color: '#fde68a' }}>
+          🔇 소리 꺼짐 — 프로젝터 화면을 한 번 클릭하면 음악이 나옵니다
+        </p>
       )}
     </>
   );
@@ -399,22 +449,31 @@ function stageKey(state) {
   return `${state.phase}-${state.position?.round ?? ''}`;
 }
 
-// 초성 힌트: 공개 전에는 같은 자리에 "n초 후 공개"를 보여준다 (힌트 글자는 서버가 아직 보내지 않음)
+// 초성 힌트는 바로, 추가 힌트(예: '드라마')는 정한 초 뒤에. 공개 전에는 그 자리에 "n초 후 공개"
+// (추가 힌트 글자는 서버가 아직 보내지 않는다). 자리를 미리 잡아 두어 문제 글이 밀리지 않는다.
 function ConsonantHint({ question }) {
   const seconds = useHintCountdown(question.hint);
-  if (!question.consonantHint && seconds == null) return null;
-  // 힌트가 나와도 문제 글이 밀리지 않도록 같은 높이를 미리 잡아 둔다
+  const hasExtra = question.extraHint || seconds != null;
   return (
-    <div className="flex items-center justify-center" style={{ minHeight: '7.5vw' }}>
-      {question.consonantHint ? (
-        <motion.p initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-          className="font-black tracking-[0.4em] text-center leading-none" style={{ fontSize: '5vw', color: 'var(--d-accent)' }}>
+    <div className="flex flex-col items-center gap-[0.6vw]">
+      {question.consonantHint && (
+        <p className="font-black tracking-[0.4em] text-center leading-none" style={{ fontSize: '5vw', color: 'var(--d-accent)' }}>
           {question.consonantHint}
-        </motion.p>
-      ) : (
-        <p className="font-bold text-center" style={{ fontSize: '2.4vw', color: 'var(--d-muted)' }}>
-          💡 초성 힌트 <span className="tabular-nums" style={{ color: 'var(--d-accent)' }}>{seconds}</span>초 후 공개
         </p>
+      )}
+      {hasExtra && (
+        <div className="flex items-center justify-center" style={{ minHeight: '4vw' }}>
+          {question.extraHint ? (
+            <motion.p initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+              className="font-black text-center px-[2vw] py-[0.4vw] rounded-full" style={{ fontSize: '2.8vw', background: 'var(--d-panel)', border: '2px solid var(--d-accent)' }}>
+              💡 {question.extraHint}
+            </motion.p>
+          ) : (
+            <p className="font-bold text-center" style={{ fontSize: '2vw', color: 'var(--d-muted)' }}>
+              💡 추가 힌트 <span className="tabular-nums" style={{ color: 'var(--d-accent)' }}>{seconds}</span>초 후 공개
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

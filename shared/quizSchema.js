@@ -314,10 +314,14 @@ export function validateQuizSet(raw) {
         if (mode === GAME_MODES.CONSONANT) {
           if (isStr(q.consonantHint)) out.consonantHint = q.consonantHint;
           else err(`${qp}.consonantHint`, '초성 힌트가 필요합니다.');
-          // 힌트는 문제가 나오고 hintDelay 초 뒤에 공개 (0 이면 바로)
+          // 추가 힌트(선택, 예: '드라마'): 초성 힌트는 바로, 추가 힌트는 hintDelay 초 뒤에 공개 (0 이면 바로)
+          if (q.extraHint !== undefined && q.extraHint !== '') {
+            if (isStr(q.extraHint)) out.extraHint = q.extraHint.trim().slice(0, 60);
+            else err(`${qp}.extraHint`, '추가 힌트는 글자여야 합니다.');
+          }
           out.hintDelay = num(q.hintDelay, `${qp}.hintDelay`, HINT_DELAY_DEFAULT, { max: 600 });
-          if (out.hintDelay !== undefined && out.hintDelay >= out.timeLimit) {
-            warn(`${qp}.hintDelay`, `힌트 공개(${out.hintDelay}초)가 제한 시간(${out.timeLimit}초) 안에 오지 않습니다. 마감 때 공개됩니다.`);
+          if (out.extraHint && out.hintDelay !== undefined && out.hintDelay >= out.timeLimit) {
+            warn(`${qp}.hintDelay`, `추가 힌트 공개(${out.hintDelay}초)가 제한 시간(${out.timeLimit}초) 안에 오지 않습니다. 마감 때 공개됩니다.`);
           }
         }
 
